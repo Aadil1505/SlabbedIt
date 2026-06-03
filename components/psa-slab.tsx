@@ -104,10 +104,12 @@ export function PSASlab({
             backdrop-filter isn't on the same element as the tilt transform. */}
         <div className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-[linear-gradient(152deg,rgba(249,250,252,0.86)_0%,rgba(235,238,243,0.8)_46%,rgba(221,226,233,0.78)_78%,rgba(231,235,240,0.84)_100%)] backdrop-blur-[0.5cqw] backdrop-saturate-[1.1] shadow-[inset_0_0_0_0.35cqw_rgba(255,255,255,0.95),inset_0_1.4cqw_2.6cqw_rgba(255,255,255,0.95),inset_0_-2cqw_3.6cqw_rgba(120,132,150,0.34),inset_-2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.65),inset_2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.65),inset_-0.5cqw_0_0.6cqw_rgba(150,160,176,0.12),inset_0.5cqw_0_0.6cqw_rgba(150,160,176,0.12)]" />
 
-        {/* Label — clean logo bar. Negative margin pulls it out to the tub's
-            width (body padding is 8cqw, the tub sits at 2.6cqw, so -5.4cqw each
-            side lands the label edges flush with the tub). */}
-        <div className="-mx-[5.4cqw] flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] border-[#cf1f2e] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]">
+        {/* Label — clean logo bar. Negative margin widens it past the card's
+            margin toward the tub, but stops ~1.9cqw short of the tub edge so a
+            band of acrylic shows between the label and the side (body padding
+            is 8cqw, the tub sits at 2.6cqw, so -3.5cqw lands the label at
+            ~4.5cqw from the edge). */}
+        <div className="-mx-[3.5cqw] flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] border-[#cf1f2e] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]">
           {logo}
         </div>
 
