@@ -41,14 +41,6 @@ const PLACEHOLDER_SRC =
     <rect x="60" y="540" width="380" height="90" rx="10" fill="#ffffff" opacity="0.55"/>
   </svg>`);
 
-// Recessed channel lines that run along each side of the card well. Same
-// engraved treatment as the inner-well line (faint dark line + a soft
-// highlight beside it), but broken at the corners so they don't connect.
-const CARD_GROOVE_H =
-  "pointer-events-none absolute h-[0.16cqw] bg-[rgba(110,123,142,0.45)] shadow-[0_0.18cqw_0.22cqw_-0.1cqw_rgba(255,255,255,0.8)]";
-const CARD_GROOVE_V =
-  "pointer-events-none absolute w-[0.16cqw] bg-[rgba(110,123,142,0.45)] shadow-[0.18cqw_0_0.22cqw_-0.1cqw_rgba(255,255,255,0.8)]";
-
 type PSASlabProps = {
   /** Card image URL or data URI. Falls back to a holo placeholder. */
   src?: string;
@@ -110,7 +102,7 @@ export function PSASlab({
         {/* Acrylic face — translucent fill, frosted backdrop, and the beveled
             inset shadows. Kept on its own layer (behind the content) so the
             backdrop-filter isn't on the same element as the tilt transform. */}
-        <div className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-[linear-gradient(152deg,rgba(252,253,254,0.5)_0%,rgba(238,241,245,0.38)_46%,rgba(223,227,234,0.34)_78%,rgba(232,235,240,0.44)_100%)] backdrop-blur-[0.5cqw] backdrop-saturate-[1.1] shadow-[inset_0_0_0_0.35cqw_rgba(255,255,255,0.9),inset_0_1.4cqw_2.6cqw_rgba(255,255,255,0.95),inset_0_-2cqw_3.6cqw_rgba(120,132,150,0.4),inset_-2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.6),inset_2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.6),inset_-0.5cqw_0_0.6cqw_rgba(150,160,176,0.14),inset_0.5cqw_0_0.6cqw_rgba(150,160,176,0.14)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-[linear-gradient(152deg,rgba(249,250,252,0.86)_0%,rgba(235,238,243,0.8)_46%,rgba(221,226,233,0.78)_78%,rgba(231,235,240,0.84)_100%)] backdrop-blur-[0.5cqw] backdrop-saturate-[1.1] shadow-[inset_0_0_0_0.35cqw_rgba(255,255,255,0.95),inset_0_1.4cqw_2.6cqw_rgba(255,255,255,0.95),inset_0_-2cqw_3.6cqw_rgba(120,132,150,0.34),inset_-2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.65),inset_2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.65),inset_-0.5cqw_0_0.6cqw_rgba(150,160,176,0.12),inset_0.5cqw_0_0.6cqw_rgba(150,160,176,0.12)]" />
 
         {/* Label — clean logo bar */}
         <div className="flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] border-[#cf1f2e] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]">
@@ -132,16 +124,20 @@ export function PSASlab({
               // className="h-full w-full rounded-[1.4cqw] object-contain shadow-[0_0.8cqw_1.8cqw_rgba(0,0,0,.22),0_0.2cqw_0.5cqw_rgba(0,0,0,.18)]"
             />
 
-            {/* Four recessed channel lines, broken at the corners */}
-            <span className={cn(CARD_GROOVE_H, "left-[14%] right-[14%] top-[-1.8cqw]")} />
-            <span className={cn(CARD_GROOVE_H, "left-[14%] right-[14%] bottom-[-1.8cqw]")} />
-            <span className={cn(CARD_GROOVE_V, "top-[14%] bottom-[14%] left-[-1.8cqw]")} />
-            <span className={cn(CARD_GROOVE_V, "top-[14%] bottom-[14%] right-[-1.8cqw]")} />
+            {/* Card well — the card is sunk a second step into the tub floor.
+                A beveled channel rings it: raised lip highlight outside, dark
+                wall dropping to the card, lower wall catching light. */}
+            <span className="pointer-events-none absolute inset-[-1.7cqw] rounded-[1.7cqw] shadow-[0_-0.25cqw_0.3cqw_-0.05cqw_rgba(255,255,255,0.72),0_0.3cqw_0.4cqw_-0.1cqw_rgba(28,36,50,0.26),inset_0_0.55cqw_0.7cqw_-0.25cqw_rgba(28,36,50,0.44),inset_0_-0.45cqw_0.6cqw_-0.3cqw_rgba(255,255,255,0.72),inset_0.5cqw_0_0.7cqw_-0.35cqw_rgba(28,36,50,0.2),inset_-0.5cqw_0_0.7cqw_-0.35cqw_rgba(255,255,255,0.4)]" />
+            {/* Crisp scribe line right at the card edge for a clean recess. */}
+            <span className="pointer-events-none absolute inset-[-0.5cqw] rounded-[1cqw] shadow-[inset_0_0_0_0.1cqw_rgba(90,103,122,0.45),0_0.14cqw_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]" />
           </div>
         </div>
 
-        {/* Engraved inner-well line — the recessed step around label + card */}
-        <div className="pointer-events-none absolute inset-[2.8cqw] rounded-[3cqw] border-[0.18cqw] border-[rgba(110,123,142,0.5)] shadow-[0_0.2cqw_0.2cqw_-0.05cqw_rgba(255,255,255,0.85),inset_0_0.22cqw_0.28cqw_-0.1cqw_rgba(15,20,32,0.28)]" />
+        {/* Inner tub — the whole label+card area is recessed a step below the
+            slab face. Lit from above, so the step reads as: a bright lip on the
+            raised outer edge, a dark wall on the way down, then the lower wall
+            catching light. The four directional pairs carve the tub's edges. */}
+        <div className="pointer-events-none absolute inset-[2.6cqw] rounded-[2.4cqw] shadow-[0_-0.3cqw_0.4cqw_-0.05cqw_rgba(255,255,255,0.85),0_0.4cqw_0.5cqw_-0.15cqw_rgba(28,36,50,0.28),inset_0_0.9cqw_1.1cqw_-0.4cqw_rgba(28,36,50,0.4),inset_0_-0.7cqw_0.9cqw_-0.45cqw_rgba(255,255,255,0.8),inset_0.85cqw_0_1cqw_-0.5cqw_rgba(28,36,50,0.22),inset_-0.85cqw_0_1cqw_-0.5cqw_rgba(255,255,255,0.45)]" />
 
         {/* Gloss sheen — fixed diagonal + cursor-tracking highlight */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_var(--mx,50%)_var(--my,26%),rgba(255,255,255,0.28),rgba(255,255,255,0)_44%),linear-gradient(118deg,transparent_38%,rgba(255,255,255,0.22)_47%,rgba(255,255,255,0.03)_55%,transparent_62%)]" />
