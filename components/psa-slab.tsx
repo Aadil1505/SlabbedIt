@@ -41,6 +41,13 @@ const PLACEHOLDER_SRC =
     <rect x="60" y="540" width="380" height="90" rx="10" fill="#ffffff" opacity="0.55"/>
   </svg>`);
 
+// Crisp scribe marks at the card edge — one per side, broken at the corners so
+// they read as four separate engraved lines rather than a closed frame.
+const SCRIBE_H =
+  "pointer-events-none absolute h-[0.12cqw] bg-[rgba(90,103,122,0.45)] shadow-[0_0.14cqw_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]";
+const SCRIBE_V =
+  "pointer-events-none absolute w-[0.12cqw] bg-[rgba(90,103,122,0.45)] shadow-[0.14cqw_0_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]";
+
 type PSASlabProps = {
   /** Card image URL or data URI. Falls back to a holo placeholder. */
   src?: string;
@@ -136,8 +143,12 @@ export function PSASlab({
                 A beveled channel rings it: raised lip highlight outside, dark
                 wall dropping to the card, lower wall catching light. */}
             <span className="pointer-events-none absolute inset-[-1.7cqw] rounded-[1.7cqw] shadow-[0_-0.25cqw_0.3cqw_-0.05cqw_rgba(255,255,255,0.72),0_0.3cqw_0.4cqw_-0.1cqw_rgba(28,36,50,0.26),inset_0_0.55cqw_0.7cqw_-0.25cqw_rgba(28,36,50,0.44),inset_0_-0.45cqw_0.6cqw_-0.3cqw_rgba(255,255,255,0.72),inset_0.5cqw_0_0.7cqw_-0.35cqw_rgba(28,36,50,0.2),inset_-0.5cqw_0_0.7cqw_-0.35cqw_rgba(255,255,255,0.4)]" />
-            {/* Crisp scribe line right at the card edge for a clean recess. */}
-            <span className="pointer-events-none absolute inset-[-0.5cqw] rounded-[1cqw] shadow-[inset_0_0_0_0.1cqw_rgba(90,103,122,0.45),0_0.14cqw_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]" />
+            {/* Crisp scribe marks at the card edge — four separate lines,
+                broken at the corners so they don't connect into a frame. */}
+            <span className={cn(SCRIBE_H, "left-[12%] right-[12%] top-[-0.5cqw]")} />
+            <span className={cn(SCRIBE_H, "left-[12%] right-[12%] bottom-[-0.5cqw]")} />
+            <span className={cn(SCRIBE_V, "top-[12%] bottom-[12%] left-[-0.5cqw]")} />
+            <span className={cn(SCRIBE_V, "top-[12%] bottom-[12%] right-[-0.5cqw]")} />
           </div>
         </div>
 
