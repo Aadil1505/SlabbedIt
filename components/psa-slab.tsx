@@ -92,7 +92,7 @@ export function PSASlab({
         {...handlers}
         className={cn(
           "relative flex aspect-100/161 w-full flex-col gap-[5cqw]",
-          "rounded-[3cqw] px-[6.5cqw] pt-[5.5cqw] pb-[12cqw]",
+          "rounded-[3cqw] px-[8cqw] pt-[5.5cqw] pb-[12cqw]",
           "shadow-[0_1.6cqw_5cqw_rgba(15,20,32,0.4),0_0.3cqw_1cqw_rgba(15,20,32,0.3)]",
           selfTilt &&
             "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
@@ -111,8 +111,10 @@ export function PSASlab({
 
         {/* Card window */}
         <div className="relative flex min-h-0 flex-1 items-center justify-center">
-          {/* Card well — sized to the card so the grooves hug its edges */}
-          <div className="relative h-full max-w-full aspect-5/7">
+          {/* Card well — width-driven (fills the window width, height follows
+              the 5/7 ratio) and vertically centered, so the card keeps an even
+              acrylic margin and the beveled channel hugs it symmetrically. */}
+          <div className="relative w-full max-h-full aspect-5/7">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src || PLACEHOLDER_SRC}
@@ -121,7 +123,9 @@ export function PSASlab({
               onError={(e) => {
                 e.currentTarget.src = PLACEHOLDER_SRC;
               }}
-              // className="h-full w-full rounded-[1.4cqw] object-contain shadow-[0_0.8cqw_1.8cqw_rgba(0,0,0,.22),0_0.2cqw_0.5cqw_rgba(0,0,0,.18)]"
+              // Fill the well exactly so the card is centered and the beveled
+              // channel around it stays even on all four sides.
+              className="block h-full w-full rounded-[0.9cqw] object-cover"
             />
 
             {/* Card well — the card is sunk a second step into the tub floor.

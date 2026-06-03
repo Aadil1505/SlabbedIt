@@ -19,6 +19,16 @@ import { BumperContext } from "@/lib/bumper-context";
  * itself (see BumperContext).
  */
 
+// Embedded-glitter texture for translucent bodies: fractal-noise speckles
+// thresholded down to sparse bright flecks (the feColorMatrix alpha row
+// multiplies the noise hard and biases negative, so only the peaks survive).
+// Tiled and screen-blended over the frosted fill, it reads as glitter
+// suspended in clear plastic.
+const SPARKLE_SVG = encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><filter id="s"><feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 17 -10.5"/></filter><rect width="140" height="140" filter="url(#s)"/></svg>`,
+);
+const SPARKLE_URI = `url("data:image/svg+xml,${SPARKLE_SVG}")`;
+
 type BumperPreset = { color: string; translucent?: boolean };
 
 const BUMPER_PRESETS = {
@@ -150,6 +160,20 @@ export function SlabBumper({
               face,
             )}
           />
+
+          {/* Embedded glitter (translucent bodies only) — a tiled sparkle
+              texture screen-blended onto the frosted frame, masked to the same
+              ring so it only sits in the plastic, not over the slab. */}
+          {isClear ? (
+            <div
+              style={{ backgroundImage: SPARKLE_URI, backgroundSize: "13cqw 13cqw" }}
+              className={cn(
+                "pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-repeat opacity-70 mix-blend-screen",
+                pad,
+                RING_MASK,
+              )}
+            />
+          ) : null}
 
           {/* Slab cavity — the slab sits recessed inside the frame window */}
           <div className="relative">
