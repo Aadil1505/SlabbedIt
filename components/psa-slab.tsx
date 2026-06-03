@@ -99,8 +99,8 @@ export function PSASlab({
         ref={ref}
         {...handlers}
         className={cn(
-          "relative flex aspect-100/161 w-full flex-col gap-[6cqw]",
-          "rounded-[4cqw] px-[5cqw] pt-[5cqw] pb-[13cqw]",
+          "relative flex aspect-100/161 w-full flex-col gap-[5cqw]",
+          "rounded-[3cqw] px-[6.5cqw] pt-[5.5cqw] pb-[12cqw]",
           "shadow-[0_1.6cqw_5cqw_rgba(15,20,32,0.4),0_0.3cqw_1cqw_rgba(15,20,32,0.3)]",
           selfTilt &&
             "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
@@ -110,10 +110,10 @@ export function PSASlab({
         {/* Acrylic face — translucent fill, frosted backdrop, and the beveled
             inset shadows. Kept on its own layer (behind the content) so the
             backdrop-filter isn't on the same element as the tilt transform. */}
-        <div className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-[linear-gradient(152deg,rgba(252,253,254,0.5)_0%,rgba(238,241,245,0.38)_46%,rgba(223,227,234,0.34)_78%,rgba(232,235,240,0.44)_100%)] backdrop-blur-[0.5cqw] backdrop-saturate-[1.1] shadow-[inset_0_0_0_0.4cqw_rgba(255,255,255,0.85),inset_0_1.2cqw_2.4cqw_rgba(255,255,255,0.95),inset_0_-1.8cqw_3.4cqw_rgba(120,132,150,0.45),inset_-1.4cqw_0_2.6cqw_rgba(120,132,150,0.18),inset_1.4cqw_0_2.6cqw_rgba(255,255,255,0.55)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-[linear-gradient(152deg,rgba(252,253,254,0.5)_0%,rgba(238,241,245,0.38)_46%,rgba(223,227,234,0.34)_78%,rgba(232,235,240,0.44)_100%)] backdrop-blur-[0.5cqw] backdrop-saturate-[1.1] shadow-[inset_0_0_0_0.35cqw_rgba(255,255,255,0.9),inset_0_1.4cqw_2.6cqw_rgba(255,255,255,0.95),inset_0_-2cqw_3.6cqw_rgba(120,132,150,0.4),inset_-2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.6),inset_2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.6),inset_-0.5cqw_0_0.6cqw_rgba(150,160,176,0.14),inset_0.5cqw_0_0.6cqw_rgba(150,160,176,0.14)]" />
 
         {/* Label — clean logo bar */}
-        <div className="flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] border-[#cf1f2e] bg-white px-[2cqw] py-[5cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]">
+        <div className="flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] border-[#cf1f2e] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]">
           {logo}
         </div>
 

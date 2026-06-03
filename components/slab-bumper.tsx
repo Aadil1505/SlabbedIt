@@ -25,7 +25,7 @@ const BUMPER_PRESETS = {
   black: { color: "#1c2026" },
   graphite: { color: "#39404c" },
   white: { color: "#e8ebf0" },
-  red: { color: "#d23a4d" },
+  red: { color: "#dd3a2a" },
   blue: { color: "#2f6df0" },
   green: { color: "#1fae6b" },
   purple: { color: "#7c4dff" },
@@ -43,9 +43,9 @@ type BumperColor = BumperColorName | (string & {});
 // matches the slab's own 4cqw corner, so the frame hugs the slab with no gap.
 // (slab corner in bumper units ≈ 4 − 0.08·pad, so radius ≈ 4 + 0.92·pad.)
 const THICKNESS = {
-  slim: { pad: "p-[3cqw]", radius: "rounded-[6.8cqw]" },
-  standard: { pad: "p-[4.5cqw]", radius: "rounded-[8.15cqw]" },
-  chunky: { pad: "p-[6.5cqw]", radius: "rounded-[10cqw]" },
+  slim: { pad: "p-[3cqw]", radius: "rounded-[5.8cqw]" },
+  standard: { pad: "p-[4.5cqw]", radius: "rounded-[7.2cqw]" },
+  chunky: { pad: "p-[6.5cqw]", radius: "rounded-[9.1cqw]" },
 } as const;
 
 type BumperThickness = keyof typeof THICKNESS;
@@ -155,10 +155,19 @@ export function SlabBumper({
           <div className="relative">
             {children}
 
-            {/* Recess — the frame's inner wall casts a soft shadow onto the
-                slab edge (inset), and a lit chamfer rim sits on the frame just
-                outside the slab (outset). No material laps over the front. */}
-            <div className="pointer-events-none absolute inset-0 rounded-[3.6cqw] shadow-[inset_0_0_1.3cqw_0.15cqw_rgba(0,0,0,0.32),inset_0_0.55cqw_0.5cqw_-0.25cqw_rgba(255,255,255,0.3),0_0_0.7cqw_0.12cqw_color-mix(in_srgb,var(--bumper),white_30%)]" />
+            {/* Molded well. The frame is a thick piece of plastic with the slab
+                dropped into a recess, lit from above:
+                  · outset above the slab  → bright top lip of the frame wall
+                  · outset below the slab  → the wall's own drop shadow on the frame
+                  · inset from the top      → cast shadow falling onto the slab
+                  · inset from the bottom   → the lower wall catches light (chamfer)
+                  · inset sides             → soft side walls of the channel
+                The asymmetry (dark top / lit bottom) is what reads as real depth. */}
+            <div className="pointer-events-none absolute inset-0 rounded-[2.7cqw] shadow-[0_-0.45cqw_0.7cqw_-0.15cqw_color-mix(in_srgb,var(--bumper),white_55%),0_0.7cqw_0.8cqw_-0.2cqw_rgba(0,0,0,0.5),inset_0_1.1cqw_1.4cqw_-0.35cqw_rgba(0,0,0,0.55),inset_0_-0.55cqw_0.7cqw_-0.3cqw_rgba(255,255,255,0.32),inset_1cqw_0_1.3cqw_-0.55cqw_rgba(0,0,0,0.3),inset_-1cqw_0_1.3cqw_-0.55cqw_rgba(0,0,0,0.3)]" />
+
+            {/* Bright inner lip — a thin highlight where the top chamfer of the
+                frame wall catches the overhead light, just outside the slab. */}
+            <div className="pointer-events-none absolute inset-[-0.5cqw] rounded-[3.2cqw] shadow-[inset_0_0.5cqw_0.35cqw_-0.3cqw_color-mix(in_srgb,var(--bumper),white_60%)]" />
           </div>
 
           {/* Glossy surface sheen (gloss finish only) */}
