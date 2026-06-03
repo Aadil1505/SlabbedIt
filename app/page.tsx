@@ -1,4 +1,5 @@
 import { PSASlab } from "@/components/psa-slab";
+import { SlabBumper } from "@/components/slab-bumper";
 
 // Shining Fates Charizard VMAX (SV107) from TCGdex's high-res assets.
 // If the URL ever 404s, PSASlab falls back to a holo placeholder.
@@ -46,8 +47,10 @@ export default function Home() {
       </header>
 
       {/* The slab scales to whatever this box is — try changing max-w. */}
-      <div className="relative w-full max-w-[320px]">
-        <PSASlab src={SAMPLE_CARD} />
+      <div className="relative w-full max-w-90">
+        <SlabBumper>
+          <PSASlab src={SAMPLE_CARD} />
+        </SlabBumper>
       </div>
     </main>
   );
