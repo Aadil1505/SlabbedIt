@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useTilt } from "@/lib/use-tilt";
+import { useInsideBumper } from "@/lib/bumper-context";
 
 /**
  * PSASlab
@@ -78,52 +79,31 @@ export function PSASlab({
   interactive = true,
   className,
 }: PSASlabProps) {
-  const slabRef = useRef<HTMLDivElement>(null);
-
-  const handleMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const el = slabRef.current;
-      if (!interactive || !el) return;
-      const r = el.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width - 0.5;
-      const py = (e.clientY - r.top) / r.height - 0.5;
-      // Perspective tilt...
-      el.style.setProperty("--rx", `${-py * 5}deg`);
-      el.style.setProperty("--ry", `${px * 7}deg`);
-      // ...and the gloss highlight chases the cursor.
-      el.style.setProperty("--mx", `${(px + 0.5) * 100}%`);
-      el.style.setProperty("--my", `${(py + 0.5) * 100}%`);
-    },
-    [interactive],
-  );
-
-  const handleLeave = useCallback(() => {
-    const el = slabRef.current;
-    if (!el) return;
-    el.style.setProperty("--rx", "0deg");
-    el.style.setProperty("--ry", "0deg");
-    el.style.setProperty("--mx", "50%");
-    el.style.setProperty("--my", "26%");
-  }, []);
+  // Inside a bumper, the bumper drives the tilt for the whole assembly, so the
+  // slab disables its own (its gloss still tracks via inherited --mx/--my).
+  const bumped = useInsideBumper();
+  const selfTilt = interactive && !bumped;
+  const { ref, handlers } = useTilt<HTMLDivElement>(selfTilt);
 
   return (
     <div
       className={cn("@container relative w-full", className)}
     >
-      {/* Floor shadow — anchors the slab so it reads as floating. */}
-      <div className="pointer-events-none absolute inset-x-[8%] bottom-[-3cqw] h-[10cqw] blur-[2cqw] bg-[radial-gradient(ellipse_at_center,rgba(8,11,18,0.55)_0%,rgba(8,11,18,0.28)_45%,transparent_72%)]" />
+      {/* Floor shadow — anchors the slab when standalone. A bumper supplies
+          its own, so skip it when wrapped. */}
+      {!bumped ? (
+        <div className="pointer-events-none absolute inset-x-[8%] bottom-[-3cqw] h-[10cqw] blur-[2cqw] bg-[radial-gradient(ellipse_at_center,rgba(8,11,18,0.55)_0%,rgba(8,11,18,0.28)_45%,transparent_72%)]" />
+      ) : null}
 
       <div
-        ref={slabRef}
-        onPointerMove={handleMove}
-        onPointerLeave={handleLeave}
+        ref={ref}
+        {...handlers}
         className={cn(
           "relative flex aspect-100/161 w-full flex-col gap-[6cqw]",
           "rounded-[4cqw] px-[5cqw] pt-[5cqw] pb-[13cqw]",
           "shadow-[0_1.6cqw_5cqw_rgba(15,20,32,0.4),0_0.3cqw_1cqw_rgba(15,20,32,0.3)]",
-          "transition-transform duration-500 ease-out will-change-transform",
-          "transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))]",
-          "motion-reduce:transition-none motion-reduce:transform-none",
+          selfTilt &&
+            "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
           "animate-in fade-in zoom-in-95 duration-700",
         )}
       >

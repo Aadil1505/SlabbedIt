@@ -8,7 +8,7 @@ const SAMPLE_CARD =
 
 export default function Home() {
   return (
-    <main className="relative flex min-h-screen flex-1 flex-col items-center justify-center gap-10 overflow-hidden px-6 py-16 bg-[radial-gradient(140%_120%_at_50%_-10%,#1b2742_0%,#0c1322_42%,#05080f_100%)]">
+    <main className="relative flex min-h-screen flex-1 flex-col items-center justify-center gap-10 overflow-hidden px-6 py-16 bg-black">
       {/* Backdrop — layered so the acrylic has rich, colored light to refract. */}
 
       {/* Ambient color glows in the corners */}
@@ -48,7 +48,7 @@ export default function Home() {
 
       {/* The slab scales to whatever this box is — try changing max-w. */}
       <div className="relative w-full max-w-90">
-        <SlabBumper>
+        <SlabBumper color="red">
           <PSASlab src={SAMPLE_CARD} />
         </SlabBumper>
       </div>
