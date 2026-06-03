@@ -139,9 +139,9 @@ export function PSASlab({
               className="block h-full w-full rounded-[0.9cqw] object-cover"
             />
 
-            {/* Card well — the card is sunk a second step into the tub floor.
-                A beveled channel rings it: raised lip highlight outside, dark
-                wall dropping to the card, lower wall catching light. */}
+            {/* Card-well channel — the card is sunk a second step into the tub
+                floor. A beveled channel rings it: raised lip highlight outside,
+                dark wall dropping to the card, lower wall catching light. */}
             <span className="pointer-events-none absolute inset-[-1.7cqw] rounded-[1.7cqw] shadow-[0_-0.25cqw_0.3cqw_-0.05cqw_rgba(255,255,255,0.72),0_0.3cqw_0.4cqw_-0.1cqw_rgba(28,36,50,0.26),inset_0_0.55cqw_0.7cqw_-0.25cqw_rgba(28,36,50,0.44),inset_0_-0.45cqw_0.6cqw_-0.3cqw_rgba(255,255,255,0.72),inset_0.5cqw_0_0.7cqw_-0.35cqw_rgba(28,36,50,0.2),inset_-0.5cqw_0_0.7cqw_-0.35cqw_rgba(255,255,255,0.4)]" />
             {/* Crisp scribe marks at the card edge — four separate lines,
                 broken at the corners so they don't connect into a frame. */}

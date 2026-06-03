@@ -50,8 +50,9 @@ export type BumperColorName = keyof typeof BUMPER_PRESETS;
 type BumperColor = BumperColorName | (string & {});
 
 // `radius` is tuned so the window's inner corner (outer radius − padding)
-// matches the slab's own 4cqw corner, so the frame hugs the slab with no gap.
-// (slab corner in bumper units ≈ 4 − 0.08·pad, so radius ≈ 4 + 0.92·pad.)
+// matches the slab's own 3cqw corner, so the frame hugs the slab with no gap.
+// (the slab is the bumper's content box, so its 3cqw corner is 3·(1 − 2·pad/100)
+// in bumper units; outer radius = that + pad, i.e. ≈ 3 + 0.94·pad.)
 const THICKNESS = {
   slim: { pad: "p-[3cqw]", radius: "rounded-[5.8cqw]" },
   standard: { pad: "p-[4.5cqw]", radius: "rounded-[7.2cqw]" },
