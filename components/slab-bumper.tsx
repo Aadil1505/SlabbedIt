@@ -10,9 +10,9 @@ import { BumperContext } from "@/lib/bumper-context";
  * ----------
  * A molded protective bumper (think GradedGuard) that wraps a graded slab.
  * Pure wrapper: drop a <PSASlab /> in as children and the bumper frames it.
- * The slab is `@container`-sized, so it reflows to the bumper's inner width.
+ * The wrapped slab keeps its own width while bumper material grows outward.
  *
- * Everything is sized in `cqw` relative to the bumper's own width. The body
+ * Everything is sized in `cqw` relative to the slab's fixed width. The body
  * color drives all shading via `color-mix`, so one `color` prop restyles the
  * whole guard. The bumper owns the cursor tilt for the whole assembly; the
  * wrapped slab reads the inherited --mx/--my for its gloss but doesn't tilt
@@ -49,14 +49,13 @@ export const BUMPER_PRESETS = {
 export type BumperColorName = keyof typeof BUMPER_PRESETS;
 type BumperColor = BumperColorName | (string & {});
 
-// `radius` is tuned so the window's inner corner (outer radius − padding)
-// matches the slab's own 3cqw corner, so the frame hugs the slab with no gap.
-// (the slab is the bumper's content box, so its 3cqw corner is 3·(1 − 2·pad/100)
-// in bumper units; outer radius = that + pad, i.e. ≈ 3 + 0.94·pad.)
+// Padding is applied to absolutely positioned ring layers outside the slab,
+// never to the slab's layout box. Switching thickness therefore changes only
+// the bumper's outer dimensions.
 const THICKNESS = {
-  slim: { pad: "p-[3cqw]", radius: "rounded-[5.8cqw]" },
-  standard: { pad: "p-[4.5cqw]", radius: "rounded-[7.2cqw]" },
-  chunky: { pad: "p-[6.5cqw]", radius: "rounded-[9.1cqw]" },
+  slim: { pad: "3cqw" },
+  standard: { pad: "4.5cqw" },
+  chunky: { pad: "6.5cqw" },
 } as const;
 
 type BumperThickness = keyof typeof THICKNESS;
@@ -68,18 +67,6 @@ type BumperThickness = keyof typeof THICKNESS;
 const RING_MASK =
   "[mask-image:linear-gradient(#000_0_0),linear-gradient(#000_0_0)] [mask-clip:content-box,border-box] [mask-composite:exclude] [-webkit-mask-image:linear-gradient(#000_0_0),linear-gradient(#000_0_0)] [-webkit-mask-clip:content-box,border-box] [-webkit-mask-composite:xor]";
 
-// A single corner screw: domed metal head with a slot.
-const SCREW =
-  "pointer-events-none absolute z-10 h-[2.2cqw] w-[2.2cqw] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f4f6f9,#b9c0cc_55%,#828a98)] shadow-[inset_0_0_0.35cqw_rgba(0,0,0,0.45),0_0.18cqw_0.25cqw_rgba(0,0,0,0.4)]";
-const SCREW_SLOT =
-  "absolute left-1/2 top-1/2 h-[0.28cqw] w-[1.3cqw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(70,78,92,0.7)]";
-const SCREW_POS = [
-  "left-[1.8cqw] top-[1.8cqw]",
-  "right-[1.8cqw] top-[1.8cqw]",
-  "left-[1.8cqw] bottom-[1.8cqw]",
-  "right-[1.8cqw] bottom-[1.8cqw]",
-];
-
 type SlabBumperProps = {
   /** Wrapped content — typically a <PSASlab />. */
   children: ReactNode;
@@ -87,12 +74,12 @@ type SlabBumperProps = {
   color?: BumperColor;
   /** Frame width + corner mass. */
   thickness?: BumperThickness;
+  /** Outer corner radius in slab-relative cqw units. */
+  radius?: number;
   /** Force a see-through material (presets like `clear`/`smoke` set this too). */
   translucent?: boolean;
   /** Surface finish: flat matte or a glossy sheen. */
   finish?: "matte" | "gloss";
-  /** Show corner screw accents. */
-  screws?: boolean;
   /** Cursor-follow tilt for the whole assembly. Default true. */
   interactive?: boolean;
   className?: string;
@@ -102,9 +89,9 @@ export function SlabBumper({
   children,
   color = "red",
   thickness = "standard",
+  radius = 7.2,
   translucent,
   finish = "matte",
-  screws = false,
   interactive = true,
   className,
 }: SlabBumperProps) {
@@ -115,7 +102,7 @@ export function SlabBumper({
   const isClear = translucent ?? preset?.translucent ?? false;
 
   const { ref, handlers } = useTilt<HTMLDivElement>(interactive);
-  const { pad, radius } = THICKNESS[thickness];
+  const { pad } = THICKNESS[thickness];
 
   // Body face: the molded material, masked to a RING so it only exists around
   // the slab's edge — nothing sits behind the slab, so the slab's own acrylic
@@ -127,7 +114,13 @@ export function SlabBumper({
   return (
     <BumperContext.Provider value={true}>
       <div
-        style={{ "--bumper": base } as CSSProperties}
+        style={
+          {
+            "--bumper": base,
+            "--bumper-pad": pad,
+            "--bumper-radius": `${radius}cqw`,
+          } as CSSProperties
+        }
         className={cn("@container relative w-full", className)}
       >
         {/* Floor shadow for the whole assembly */}
@@ -140,10 +133,7 @@ export function SlabBumper({
           ref={ref}
           {...handlers}
           className={cn(
-            "relative",
-            pad,
-            radius,
-            "shadow-[0_2cqw_5cqw_rgba(8,11,18,0.45)]",
+            "relative isolate",
             interactive &&
               "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1500px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
             "animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none",
@@ -155,8 +145,8 @@ export function SlabBumper({
               slab). */}
           <div
             className={cn(
-              "pointer-events-none absolute inset-0 -z-10 rounded-[inherit]",
-              pad,
+              "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] -z-10 rounded-[var(--bumper-radius)] p-[var(--bumper-pad)]",
+              "drop-shadow-[0_2cqw_5cqw_rgba(8,11,18,0.45)]",
               RING_MASK,
               face,
             )}
@@ -169,8 +159,7 @@ export function SlabBumper({
             <div
               style={{ backgroundImage: SPARKLE_URI, backgroundSize: "13cqw 13cqw" }}
               className={cn(
-                "pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-repeat opacity-70 mix-blend-screen",
-                pad,
+                "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] -z-10 rounded-[var(--bumper-radius)] p-[var(--bumper-pad)] bg-repeat opacity-70 mix-blend-screen",
                 RING_MASK,
               )}
             />
@@ -197,17 +186,14 @@ export function SlabBumper({
 
           {/* Glossy surface sheen (gloss finish only) */}
           {finish === "gloss" ? (
-            <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(150deg,rgba(255,255,255,0.4)_0%,transparent_28%,transparent_72%,rgba(255,255,255,0.1)_100%)]" />
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] rounded-[var(--bumper-radius)] p-[var(--bumper-pad)] bg-[linear-gradient(150deg,rgba(255,255,255,0.4)_0%,transparent_28%,transparent_72%,rgba(255,255,255,0.1)_100%)]",
+                RING_MASK,
+              )}
+            />
           ) : null}
 
-          {/* Corner screws */}
-          {screws
-            ? SCREW_POS.map((pos) => (
-                <span key={pos} className={cn(SCREW, pos)}>
-                  <span className={SCREW_SLOT} />
-                </span>
-              ))
-            : null}
         </div>
       </div>
     </BumperContext.Provider>

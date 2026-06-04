@@ -21,7 +21,7 @@ const departureMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "GuardedView",
+  title: "SlabbedIt",
   description: "Preview your graded card in a slab.",
 };
 

@@ -1,7 +1,21 @@
 "use client";
 
-import { useId, useState } from "react";
-import { PSASlab } from "@/components/psa-slab";
+import { useCallback, useId, useRef, useState } from "react";
+import Color from "color";
+import { Check, Copy, Download, Pencil } from "lucide-react";
+import { domToBlob, domToPng } from "modern-screenshot";
+import { type CardResumeModel } from "@tcgdex/sdk";
+import { tcgdex } from "@/lib/tcgdex";
+import { CardSearch } from "@/components/card-search";
+import { PSASlab, SAMPLE_CARD_SRC, type LabelData } from "@/components/psa-slab";
+import { Button } from "@/components/ui/button";
+import {
+  ColorPicker,
+  ColorPickerEyeDropper,
+  ColorPickerFormat,
+  ColorPickerHue,
+  ColorPickerSelection,
+} from "@/components/ui/color-picker";
 import {
   BUMPER_PRESETS,
   SlabBumper,
@@ -9,58 +23,18 @@ import {
 } from "@/components/slab-bumper";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
-// Shining Fates Charizard VMAX (SV107) from TCGdex's high-res assets.
-// If the URL ever 404s, PSASlab falls back to a holo placeholder.
-const SAMPLE_CARD = "https://assets.tcgdex.net/en/swsh/swsh4.5/SV107/high.png";
-
 type Thickness = "slim" | "standard" | "chunky";
 type Finish = "matte" | "gloss";
-type GraderId = "psa" | "bgs" | "cgc" | "sgc";
-
-// Each grading company sets its house color (drives the label border) and its
-// official mark on the label, shipped as a trimmed, equal-height transparent PNG
-// in /public so the lockups read consistently across companies. `GraderLogo`
-// stays as a text fallback if a `logoSrc` is ever missing.
-const GRADERS: {
-  id: GraderId;
-  name: string;
-  full: string;
-  color: string;
-  logoSrc?: string;
-}[] = [
-  {
-    id: "psa",
-    name: "PSA",
-    full: "Professional Sports Authenticator",
-    color: "#cf1f2e",
-    logoSrc: "/psa.png",
-  },
-  {
-    id: "bgs",
-    name: "BGS",
-    full: "Beckett Grading Services",
-    color: "#9c7a1e",
-    logoSrc: "/bgs.png",
-  },
-  {
-    id: "cgc",
-    name: "CGC",
-    full: "Certified Guaranty Company",
-    color: "#ce0e2d",
-    logoSrc: "/cgc.png",
-  },
-  {
-    id: "sgc",
-    name: "SGC",
-    full: "Sportscard Guaranty",
-    color: "#1b1b1b",
-    logoSrc: "/sgc.png",
-  },
-];
 
 // Widen the `as const` preset map so optional `translucent` is visible.
 const PRESETS: Record<BumperColorName, { color: string; translucent?: boolean }> =
@@ -78,20 +52,108 @@ const FINISH_OPTS: { value: Finish; label: string }[] = [
   { value: "gloss", label: "Gloss" },
 ];
 
+// PSA's grade scale and the abbreviated qualifier printed beside each number.
+const PSA_GRADES: { grade: string; gradeLabel: string }[] = [
+  { grade: "10", gradeLabel: "GEM MT" },
+  { grade: "9", gradeLabel: "MINT" },
+  { grade: "8", gradeLabel: "NM-MT" },
+  { grade: "7", gradeLabel: "NM" },
+  { grade: "6", gradeLabel: "EX-MT" },
+  { grade: "5", gradeLabel: "EX" },
+  { grade: "4", gradeLabel: "VG-EX" },
+  { grade: "3", gradeLabel: "VG" },
+  { grade: "2", gradeLabel: "GOOD" },
+  { grade: "1", gradeLabel: "PR" },
+];
+
+// A believable 8-digit PSA-style cert number.
+function makeCert() {
+  return String(Math.floor(10000000 + Math.random() * 90000000));
+}
+
 export function SlabStudio() {
   const ids = useId();
   const urlId = `${ids}-url`;
 
-  const [cardSrc, setCardSrc] = useState(SAMPLE_CARD);
-  const [grader, setGrader] = useState<GraderId>("psa");
+  const [cardSrc, setCardSrc] = useState(SAMPLE_CARD_SRC);
+
+  // The printed grade label. Defaults describe the sample card so it reads
+  // right immediately. Grade is always user-set (the catalog has none) —
+  // default 10.
+  const [label, setLabel] = useState<LabelData>({
+    name: "Charizard VMAX",
+    set: "Shining Fates",
+    year: "2021",
+    number: "SV107",
+    grade: "10",
+    gradeLabel: "GEM MT",
+    cert: "53917042",
+  });
+  // A new card pick is the only thing that overwrites the identity fields.
+  const pickSeq = useRef(0);
+
+  function setLabelField(key: keyof LabelData, value: string) {
+    setLabel((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Event-driven auto-fill (not an effect, so manual edits aren't clobbered).
+  // Identity comes from getCard() right away; year needs a 2nd cached fetch and
+  // fills in when it resolves, degrading to an editable blank if it fails.
+  async function handleSelectCard(card: CardResumeModel) {
+    setCardSrc(card.getImageURL("high", "png"));
+    const seq = ++pickSeq.current;
+    setLabel((prev) => ({
+      ...prev,
+      name: card.name,
+      number: card.localId,
+      set: "",
+      year: "",
+      cert: makeCert(),
+    }));
+    try {
+      const full = await card.getCard();
+      if (seq !== pickSeq.current) return;
+      setLabel((prev) => ({
+        ...prev,
+        name: full.name,
+        number: full.localId,
+        set: full.set?.name ?? "",
+      }));
+      // The card's nested `set` is plain data (no `getSet`), so fetch the full
+      // set by id to get its release year. Cached by the SDK.
+      const setId = full.set?.id;
+      if (setId) {
+        const set = await tcgdex.set.get(setId);
+        if (seq !== pickSeq.current) return;
+        setLabel((prev) => ({
+          ...prev,
+          year: (set?.releaseDate ?? "").slice(0, 4),
+        }));
+      }
+    } catch {
+      // Leave set/year blank and editable.
+    }
+  }
 
   const [showBumper, setShowBumper] = useState(true);
-  const [color, setColor] = useState<BumperColorName>("red");
+  // `color` is either a preset name or a literal hex (custom). The bumper's
+  // `color` prop already accepts any CSS color, so both flow straight through.
+  const [color, setColor] = useState<string>("red");
+  // The last custom color, kept even while a preset is active so the gear
+  // swatch keeps previewing it and reopening the picker resumes from it.
+  const [customColor, setCustomColor] = useState("#7c4dff");
   const [thickness, setThickness] = useState<Thickness>("standard");
+  const [bumperRadius, setBumperRadius] = useState(7.2);
   const [finish, setFinish] = useState<Finish>("matte");
   const [translucent, setTranslucent] = useState(false);
-  const [screws, setScrews] = useState(false);
   const [interactive, setInteractive] = useState(true);
+
+  // The element captured on export. It wraps the slab assembly and, crucially,
+  // sits *above* the `@container` on the slab/bumper — so every `cqw` still
+  // resolves when modern-screenshot clones the node into an SVG foreignObject.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState<null | "download" | "copy">(null);
+  const [copied, setCopied] = useState(false);
 
   // Selecting a preset adopts its native material, so the clear/smoke/glow
   // presets read see-through immediately. The toggle can still override after.
@@ -100,24 +162,67 @@ export function SlabStudio() {
     setTranslucent(PRESETS[name].translucent ?? false);
   }
 
-  const activeGrader = GRADERS.find((g) => g.id === grader) ?? GRADERS[0];
-  const logo = activeGrader.logoSrc ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={activeGrader.logoSrc}
-      alt={activeGrader.name}
-      draggable={false}
-      className="h-[9cqw] w-auto select-none object-contain"
-    />
-  ) : (
-    <GraderLogo grader={activeGrader} />
+  // Custom is active whenever `color` isn't one of the named presets.
+  const isCustomActive = !(COLOR_NAMES as string[]).includes(color);
+
+  // The picker reports rgba; the bumper shading is opaque (translucency is the
+  // separate toggle), so we keep just the hex and apply it as the active color.
+  const handlePickCustom = useCallback(
+    (rgba: Parameters<typeof Color.rgb>[0]) => {
+      const hex = Color.rgb(rgba).hex();
+      setCustomColor(hex);
+      setColor(hex);
+    },
+    [],
   );
 
+  // Capture on a solid theme background (not the page's glows) so the light
+  // acrylic pops and the dropped backdrop-filter blur is invisible — blurring a
+  // flat color yields the same flat color. 3× scale keeps it crisp.
+  function captureOptions() {
+    return {
+      backgroundColor: getComputedStyle(document.body).backgroundColor,
+      scale: 3,
+    };
+  }
+
+  async function handleDownload() {
+    const node = stageRef.current;
+    if (!node || busy) return;
+    setBusy("download");
+    try {
+      const dataUrl = await domToPng(node, captureOptions());
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = "slabbedit-psa-slab.png";
+      a.click();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleCopy() {
+    const node = stageRef.current;
+    if (!node || busy) return;
+    setBusy("copy");
+    try {
+      // Hand the blob *Promise* to ClipboardItem so the write stays inside the
+      // user gesture — Safari rejects a clipboard write done after an await.
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": domToBlob(node, captureOptions()) }),
+      ]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard image write unsupported (older browser) — Download still works.
+    } finally {
+      setBusy(null);
+    }
+  }
   const slab = (
     <PSASlab
       src={cardSrc}
-      logo={logo}
-      labelColor={activeGrader.color}
+      label={label}
       interactive={interactive}
     />
   );
@@ -126,14 +231,19 @@ export function SlabStudio() {
     <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Stage — the gallery floor. Transparent so the page backdrop shows. */}
       <section className="flex min-h-[60vh] flex-1 items-center justify-center px-6 py-12 lg:min-h-0 lg:overflow-auto lg:py-16">
-        <div className="w-full max-w-[min(82vw,340px)] lg:max-w-[360px]">
+        {/* Capture target. Padding gives the negative-offset floor shadow room
+            so it isn't clipped out of the export. */}
+        <div
+          ref={stageRef}
+          className="w-full max-w-[min(calc(82vw+64px),424px)] px-12 pt-12 pb-16 lg:max-w-[452px]"
+        >
           {showBumper ? (
             <SlabBumper
               color={color}
               thickness={thickness}
+              radius={bumperRadius}
               finish={finish}
               translucent={translucent}
-              screws={screws}
               interactive={interactive}
             >
               {slab}
@@ -148,8 +258,9 @@ export function SlabStudio() {
       <aside className="w-full shrink-0 border-t border-border bg-sidebar/85 backdrop-blur-xl lg:w-[360px] lg:border-t-0 lg:border-l lg:overflow-y-auto">
         <div className="flex flex-col gap-8 p-6">
           <Section title="Card">
+            <CardSearch onSelect={handleSelectCard} selectedURL={cardSrc} />
             <Row>
-              <Label htmlFor={urlId}>Image URL</Label>
+              <Label htmlFor={urlId}>Or paste an image URL</Label>
               <Input
                 id={urlId}
                 value={cardSrc}
@@ -159,20 +270,92 @@ export function SlabStudio() {
               />
               <button
                 type="button"
-                onClick={() => setCardSrc(SAMPLE_CARD)}
+                onClick={() => setCardSrc(SAMPLE_CARD_SRC)}
                 className="self-start text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
               >
                 Reset to sample card
               </button>
             </Row>
-            <Row>
-              <Label>Grading company</Label>
-              <Segmented
-                options={GRADERS.map((g) => ({ value: g.id, label: g.name }))}
-                value={grader}
-                onChange={setGrader}
-              />
-            </Row>
+          </Section>
+
+          <Section title="Label">
+            <div className="flex flex-col gap-6">
+              <Row>
+                <Label>Grade</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {PSA_GRADES.map(({ grade, gradeLabel }) => {
+                    const active = label.grade === grade;
+                    return (
+                      <button
+                        key={grade}
+                        type="button"
+                        onClick={() =>
+                          setLabel((prev) => ({ ...prev, grade, gradeLabel }))
+                        }
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-md border py-1.5 font-heading text-sm transition-colors",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-foreground hover:bg-accent/40",
+                        )}
+                      >
+                        {grade}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {label.gradeLabel}
+                </span>
+              </Row>
+
+              <Row>
+                <Label htmlFor={`${ids}-lname`}>Card name</Label>
+                <Input
+                  id={`${ids}-lname`}
+                  value={label.name}
+                  onChange={(e) => setLabelField("name", e.target.value)}
+                />
+              </Row>
+              <Row>
+                <Label htmlFor={`${ids}-lset`}>Set</Label>
+                <Input
+                  id={`${ids}-lset`}
+                  value={label.set}
+                  onChange={(e) => setLabelField("set", e.target.value)}
+                  placeholder="—"
+                />
+              </Row>
+              <div className="grid grid-cols-2 gap-3">
+                <Row>
+                  <Label htmlFor={`${ids}-lyear`}>Year</Label>
+                  <Input
+                    id={`${ids}-lyear`}
+                    value={label.year}
+                    onChange={(e) => setLabelField("year", e.target.value)}
+                    placeholder="—"
+                  />
+                </Row>
+                <Row>
+                  <Label htmlFor={`${ids}-lnum`}>Number</Label>
+                  <Input
+                    id={`${ids}-lnum`}
+                    value={label.number}
+                    onChange={(e) => setLabelField("number", e.target.value)}
+                  />
+                </Row>
+              </div>
+              <Row>
+                <Label htmlFor={`${ids}-lcert`}>Cert</Label>
+                <Input
+                  id={`${ids}-lcert`}
+                  value={label.cert}
+                  onChange={(e) => setLabelField("cert", e.target.value)}
+                />
+              </Row>
+            </div>
           </Section>
 
           <Section title="Bumper">
@@ -216,9 +399,50 @@ export function SlabStudio() {
                       />
                     );
                   })}
+
+                  {/* Custom color — the last swatch. Previews the chosen hex
+                      and opens a picker to set any bumper color. */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        title="Custom color"
+                        aria-label="Custom color"
+                        aria-pressed={isCustomActive}
+                        className={cn(
+                          "relative grid aspect-square place-items-center rounded-full border border-border/70 transition-transform",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none",
+                          isCustomActive
+                            ? "ring-2 ring-ring ring-offset-2 ring-offset-sidebar"
+                            : "hover:scale-110",
+                        )}
+                        style={{ background: customColor }}
+                      >
+                        <Pencil className="size-3 text-white drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.7)]" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      className="w-56"
+                      // Don't steal focus back to the trigger while dragging.
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <ColorPicker
+                        defaultValue={customColor}
+                        onChange={handlePickCustom}
+                      >
+                        <ColorPickerSelection className="h-32 rounded-md" />
+                        <ColorPickerHue />
+                        <div className="flex items-center gap-2">
+                          <ColorPickerEyeDropper />
+                          <ColorPickerFormat />
+                        </div>
+                      </ColorPicker>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <span className="text-xs capitalize text-muted-foreground">
-                  {color}
+                  {isCustomActive ? `Custom · ${color}` : color}
                 </span>
               </Row>
 
@@ -229,6 +453,24 @@ export function SlabStudio() {
                   value={thickness}
                   onChange={setThickness}
                   disabled={!showBumper}
+                />
+              </Row>
+
+              <Row>
+                <div className="flex items-center justify-between gap-3">
+                  <Label id={`${ids}-radius-label`}>Corner radius</Label>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {bumperRadius.toFixed(1)}
+                  </span>
+                </div>
+                <Slider
+                  min={3}
+                  max={12}
+                  step={0.1}
+                  value={[bumperRadius]}
+                  onValueChange={([value]) => setBumperRadius(value)}
+                  disabled={!showBumper}
+                  aria-labelledby={`${ids}-radius-label`}
                 />
               </Row>
 
@@ -248,12 +490,6 @@ export function SlabStudio() {
                 checked={translucent}
                 onChange={setTranslucent}
               />
-              <SwitchRow
-                id={`${ids}-screws`}
-                label="Corner screws"
-                checked={screws}
-                onChange={setScrews}
-              />
             </fieldset>
           </Section>
 
@@ -265,34 +501,36 @@ export function SlabStudio() {
               onChange={setInteractive}
             />
           </Section>
+
+          <Section title="Export">
+            <p className="text-xs text-muted-foreground">
+              Save a clean image of your slab to share.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                onClick={handleDownload}
+                disabled={busy !== null}
+                className="flex-1"
+              >
+                <Download />
+                {busy === "download" ? "Saving…" : "Download"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCopy}
+                disabled={busy !== null}
+                className="flex-1"
+              >
+                {copied ? <Check /> : <Copy />}
+                {copied ? "Copied" : busy === "copy" ? "Copying…" : "Copy"}
+              </Button>
+            </div>
+          </Section>
         </div>
       </aside>
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ logo */
-
-// One consistent lockup for every company: a bold acronym over a tracked,
-// uppercase full name, both in the house color, optically centered. Sized in
-// `cqw` so it scales with the slab. Swap in an official mark via `logoSrc`.
-function GraderLogo({
-  grader,
-}: {
-  grader: { name: string; full: string; color: string };
-}) {
-  return (
-    <span
-      style={{ color: grader.color }}
-      className="flex select-none flex-col items-center leading-none"
-    >
-      <span className="font-sans text-[7.5cqw] font-black tracking-[-0.02em]">
-        {grader.name}
-      </span>
-      <span className="mt-[1.3cqw] font-sans text-[1.7cqw] font-semibold tracking-[0.2em] uppercase">
-        {grader.full}
-      </span>
-    </span>
   );
 }
 
