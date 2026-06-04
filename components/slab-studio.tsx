@@ -50,6 +50,10 @@ const GRADERS: {
   full: string;
   color: string;
   logoSrc?: string;
+  // Optional flip artwork — when set, the label chrome is image-backed and only
+  // the text is overlaid (PSASlab.labelImage). Prototype asset; replace before
+  // shipping.
+  labelImageSrc?: string;
 }[] = [
   {
     id: "psa",
@@ -57,6 +61,7 @@ const GRADERS: {
     full: "Professional Sports Authenticator",
     color: "#cf1f2e",
     logoSrc: "/psa.png",
+    labelImageSrc: "/psa-label-template.png",
   },
   {
     id: "bgs",
@@ -285,6 +290,7 @@ export function SlabStudio() {
       logo={logo}
       labelColor={activeGrader.color}
       label={label}
+      labelImage={activeGrader.labelImageSrc}
       interactive={interactive}
     />
   );

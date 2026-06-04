@@ -1,24 +1,15 @@
 "use client";
 
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useTilt } from "@/lib/use-tilt";
 import { useInsideBumper } from "@/lib/bumper-context";
+import styles from "./psa-slab.module.css";
 
 /**
- * PSASlab
- * -------
- * A pure CSS/DOM "graded slab" frame that wraps any trading card image to look
- * like it's sealed in a PSA-style case. No 3D, no canvas.
- *
- * - Scales to its parent width via a CSS container (everything sized in `cqw`),
- *   so it works in a 200px box or a 400px box with no prop changes.
- * - Depth (acrylic bevel, floor shadow, gloss) is all Tailwind arbitrary
- *   utilities — no custom CSS. The multi-layer shadows are long but local.
- * - The gloss highlight and a subtle perspective tilt both follow the cursor
- *   (disable the tilt with `interactive={false}`).
- *
- * The label is a printed PSA-style grade lockup driven by `label`; the `logo`
- * prop supplies the small brand mark on it (defaults to the PSA logo).
+ * A front-facing, pure DOM/CSS model of a current PSA-style standard card
+ * holder. The case is built as separate molded planes so its clear plastic
+ * reads from the hard edges and rails instead of an opaque acrylic fill.
  */
 
 const PLACEHOLDER_SRC =
@@ -41,14 +32,13 @@ const PLACEHOLDER_SRC =
     <rect x="60" y="540" width="380" height="90" rx="10" fill="#ffffff" opacity="0.55"/>
   </svg>`);
 
-// Crisp scribe marks at the card edge — one per side, broken at the corners so
-// they read as four separate engraved lines rather than a closed frame.
-const SCRIBE_H =
-  "pointer-events-none absolute h-[0.12cqw] bg-[rgba(90,103,122,0.45)] shadow-[0_0.14cqw_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]";
-const SCRIBE_V =
-  "pointer-events-none absolute w-[0.12cqw] bg-[rgba(90,103,122,0.45)] shadow-[0.14cqw_0_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]";
+// Uneven bar widths make the printed code read like a real Code 128 barcode
+// rather than a decorative striped rectangle.
+const BARCODE_BARS = [
+  1, 1, 2, 1, 3, 1, 2, 2, 1, 1, 3, 2, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 3, 2,
+  1, 2, 2, 1, 1, 3, 1, 2, 1, 2, 3, 1, 1, 2, 2, 1, 3, 1, 2, 1, 1, 3, 2, 1,
+] as const;
 
-/** Printed details for the "accurate" label mode. */
 export type LabelData = {
   name: string;
   set: string;
@@ -60,16 +50,20 @@ export type LabelData = {
 };
 
 type PSASlabProps = {
-  /** Card image URL or data URI. Falls back to a holo placeholder. */
   src?: string;
   alt?: string;
-  /** The small grading-company brand mark printed on the label. */
-  logo?: React.ReactNode;
-  /** Label trim color (the grading company's house color). */
+  logo?: ReactNode;
   labelColor?: string;
-  /** Printed details for the grade lockup (grade, identity, cert). */
   label: LabelData;
-  /** Cursor-follow tilt + gloss. Default true. */
+  /**
+   * Optional flip artwork. When set, the label chrome (red border, security
+   * watermark, PSA mark) comes from this image and only the editable text is
+   * overlaid on top — the shibadev "tag template" technique. When omitted, the
+   * label is drawn entirely in CSS.
+   * NOTE: the bundled /psa-label-template.png is a temporary prototype asset and
+   * must be replaced with our own artwork before shipping.
+   */
+  labelImage?: string;
   interactive?: boolean;
   className?: string;
 };
@@ -77,12 +71,7 @@ type PSASlabProps = {
 function DefaultMark() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/psa.png"
-      alt="PSA"
-      draggable={false}
-      className="h-[9cqw] w-auto select-none object-contain"
-    />
+    <img src="/psa.png" alt="PSA" draggable={false} />
   );
 }
 
@@ -92,152 +81,156 @@ export function PSASlab({
   logo = <DefaultMark />,
   labelColor = "#cf1f2e",
   label,
+  labelImage,
   interactive = true,
   className,
 }: PSASlabProps) {
-  // Inside a bumper, the bumper drives the tilt for the whole assembly, so the
-  // slab disables its own (its gloss still tracks via inherited --mx/--my).
   const bumped = useInsideBumper();
   const selfTilt = interactive && !bumped;
   const { ref, handlers } = useTilt<HTMLDivElement>(selfTilt);
 
   return (
-    <div
-      className={cn("@container relative w-full", className)}
-    >
-      {/* Floor shadow — anchors the slab when standalone. A bumper supplies
-          its own, so skip it when wrapped. */}
-      {!bumped ? (
-        <div className="pointer-events-none absolute inset-x-[8%] bottom-[-3cqw] h-[10cqw] blur-[2cqw] bg-[radial-gradient(ellipse_at_center,rgba(8,11,18,0.55)_0%,rgba(8,11,18,0.28)_45%,transparent_72%)]" />
-      ) : null}
+    <div className={cn(styles.container, className)}>
+      {!bumped ? <div className={styles.floorShadow} /> : null}
 
       <div
         ref={ref}
         {...handlers}
         className={cn(
-          "relative flex aspect-100/161 w-full flex-col gap-[11cqw]",
-          "rounded-[3cqw] px-[8cqw] pt-[4cqw] pb-[7cqw]",
-          "shadow-[0_1.6cqw_5cqw_rgba(15,20,32,0.4),0_0.3cqw_1cqw_rgba(15,20,32,0.3)]",
-          selfTilt &&
-            "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
+          styles.slab,
+          selfTilt && styles.interactive,
           "animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none",
         )}
       >
-        {/* Acrylic face — translucent fill, frosted backdrop, and the beveled
-            inset shadows. Kept on its own layer (behind the content) so the
-            backdrop-filter isn't on the same element as the tilt transform. */}
-        <div className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit] bg-[linear-gradient(152deg,rgba(249,250,252,0.86)_0%,rgba(235,238,243,0.8)_46%,rgba(221,226,233,0.78)_78%,rgba(231,235,240,0.84)_100%)] backdrop-blur-[0.5cqw] backdrop-saturate-[1.1] shadow-[inset_0_0_0_0.35cqw_rgba(255,255,255,0.95),inset_0_1.4cqw_2.6cqw_rgba(255,255,255,0.95),inset_0_-2cqw_3.6cqw_rgba(120,132,150,0.34),inset_-2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.65),inset_2cqw_0_3cqw_-0.3cqw_rgba(255,255,255,0.65),inset_-0.5cqw_0_0.6cqw_rgba(150,160,176,0.12),inset_0.5cqw_0_0.6cqw_rgba(150,160,176,0.12)]" />
+        {/* The clear molded shell and its continuous sonic-weld perimeter. */}
+        <div className={styles.shellFace} />
+        <div className={styles.outerEdge} />
+        <div className={styles.weldRail} />
 
-        {/* Printed PSA-style grade label. Its negative margin widens it past
-            the card toward the tub while leaving a band of acrylic on each
-            side. */}
-        <AccurateLabel label={label} labelColor={labelColor} logo={logo} />
+        {/* Hard directional reflections reveal the thickness of clear plastic. */}
+        <span className={cn(styles.edgeFacet, styles.edgeFacetTop)} />
+        <span className={cn(styles.edgeFacet, styles.edgeFacetRight)} />
+        <span className={cn(styles.edgeFacet, styles.edgeFacetBottom)} />
+        <span className={cn(styles.edgeFacet, styles.edgeFacetLeft)} />
 
-        {/* Card window */}
-        <div className="relative flex min-h-0 flex-1 items-center justify-center">
-          {/* Card well — height-driven (fills the window height, width follows
-              the 5/7 ratio, capped to the width) so the whole card always fits
-              and never crops, whatever the label's height. The card is centered,
-              and the beveled channel hugs it. */}
-          <div className="relative h-full max-w-full aspect-5/7">
+        {/* The flip sits in a shallow, separately molded header pocket. */}
+        <div className={styles.labelPocket}>
+          <AccurateLabel
+            label={label}
+            labelColor={labelColor}
+            logo={logo}
+            labelImage={labelImage}
+          />
+        </div>
+
+        {/* One lower cavity wall and four interrupted card-retention ledges. */}
+        <div className={styles.cardTray}>
+          <div className={styles.cardChannel}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src || PLACEHOLDER_SRC}
               alt={alt}
               draggable={false}
-              onError={(e) => {
-                e.currentTarget.src = PLACEHOLDER_SRC;
+              onError={(event) => {
+                event.currentTarget.src = PLACEHOLDER_SRC;
               }}
-              // Fill the well exactly so the card is centered and the beveled
-              // channel around it stays even on all four sides.
-              className="block h-full w-full rounded-[0.9cqw] object-cover"
+              className={styles.cardImage}
             />
 
-            {/* Card-well channel — the card is sunk a second step into the tub
-                floor. A beveled channel rings it: raised lip highlight outside,
-                dark wall dropping to the card, lower wall catching light. */}
-            <span className="pointer-events-none absolute inset-[-1.7cqw] rounded-[1.7cqw] shadow-[0_-0.25cqw_0.3cqw_-0.05cqw_rgba(255,255,255,0.72),0_0.3cqw_0.4cqw_-0.1cqw_rgba(28,36,50,0.26),inset_0_0.55cqw_0.7cqw_-0.25cqw_rgba(28,36,50,0.44),inset_0_-0.45cqw_0.6cqw_-0.3cqw_rgba(255,255,255,0.72),inset_0.5cqw_0_0.7cqw_-0.35cqw_rgba(28,36,50,0.2),inset_-0.5cqw_0_0.7cqw_-0.35cqw_rgba(255,255,255,0.4)]" />
-            {/* Crisp scribe marks at the card edge — four separate lines,
-                broken at the corners so they don't connect into a frame. */}
-            <span className={cn(SCRIBE_H, "left-[12%] right-[12%] top-[-0.5cqw]")} />
-            <span className={cn(SCRIBE_H, "left-[12%] right-[12%] bottom-[-0.5cqw]")} />
-            <span className={cn(SCRIBE_V, "top-[12%] bottom-[12%] left-[-0.5cqw]")} />
-            <span className={cn(SCRIBE_V, "top-[12%] bottom-[12%] right-[-0.5cqw]")} />
+            {/* Short clear retention ledges stop before the rounded corners. */}
+            <span className={cn(styles.cardStop, styles.cardStopTop)} />
+            <span className={cn(styles.cardStop, styles.cardStopRight)} />
+            <span className={cn(styles.cardStop, styles.cardStopBottom)} />
+            <span className={cn(styles.cardStop, styles.cardStopLeft)} />
           </div>
+
+          <span className={styles.embossedMark} aria-hidden>
+            PSA
+          </span>
         </div>
 
-        {/* Inner tub — the whole label+card area is recessed a step below the
-            slab face. Lit from above, so the step reads as: a bright lip on the
-            raised outer edge, a dark wall on the way down, then the lower wall
-            catching light. The four directional pairs carve the tub's edges. */}
-        <div className="pointer-events-none absolute inset-[2.6cqw] rounded-[2.4cqw] shadow-[0_-0.3cqw_0.4cqw_-0.05cqw_rgba(255,255,255,0.85),0_0.4cqw_0.5cqw_-0.15cqw_rgba(28,36,50,0.28),inset_0_0.9cqw_1.1cqw_-0.4cqw_rgba(28,36,50,0.4),inset_0_-0.7cqw_0.9cqw_-0.45cqw_rgba(255,255,255,0.8),inset_0.85cqw_0_1cqw_-0.5cqw_rgba(28,36,50,0.22),inset_-0.85cqw_0_1cqw_-0.5cqw_rgba(255,255,255,0.45)]" />
-
-        {/* Gloss sheen — fixed diagonal + cursor-tracking highlight */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_var(--mx,50%)_var(--my,26%),rgba(255,255,255,0.28),rgba(255,255,255,0)_44%),linear-gradient(118deg,transparent_38%,rgba(255,255,255,0.22)_47%,rgba(255,255,255,0.03)_55%,transparent_62%)]" />
+        {/* Subtle shell reflections. These stay restrained so the case reads
+            as clear plastic, not frosted glass or a metallic panel. */}
+        <div className={styles.fixedReflections} />
+        <div className={styles.cursorReflection} />
       </div>
     </div>
   );
 }
 
-/* ---------------------------------------------------------- accurate label */
-
-// A faithful PSA "flip" modelled on a real label: white field inside red trim.
-// Left = identity block (YEAR BRAND / NAME / SET) over the barcode. Right = a
-// uniform, evenly-spaced four-line column (#number / grade label / grade / cert)
-// — the grade is NOT enlarged, and the cert is black, matching the real label.
-// The PSA mark sits on a silver chip straddling the bottom trim. Text is the
-// condensed grotesque PSA uses (Univers Condensed, Roboto Condensed fallback).
-// Material colors are literal by design (DESIGN.md).
 function AccurateLabel({
   label,
   labelColor,
   logo,
+  labelImage,
 }: {
   label: LabelData;
   labelColor: string;
-  logo: React.ReactNode;
+  logo: ReactNode;
+  labelImage?: string;
 }) {
   const line1 = [label.year, "POKEMON"].filter(Boolean).join(" ");
+  const imageBacked = Boolean(labelImage);
 
   return (
     <div
-      style={{
-        borderColor: labelColor,
-        fontFamily: "var(--font-univers), var(--font-condensed), sans-serif",
-      }}
-      className="relative -mx-[3.5cqw] rounded-[1cqw] border-[0.9cqw] bg-white text-[#161616] uppercase shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]"
+      style={
+        {
+          "--label-color": labelColor,
+          fontFamily: imageBacked
+            ? "var(--font-geist-sans), Arial, sans-serif"
+            : "var(--font-univers), var(--font-condensed), sans-serif",
+        } as CSSProperties
+      }
+      className={cn(styles.label, imageBacked && styles.labelImaged)}
     >
-      <div className="flex items-stretch gap-[2cqw] px-[2.8cqw] py-[2.6cqw]">
-        {/* Identity (top) over barcode (bottom) */}
-        <div className="flex min-w-0 flex-1 flex-col justify-between gap-[2.4cqw]">
-          <div className="flex min-w-0 flex-col font-normal leading-[1.16] tracking-[0.01em]">
-            <span className="truncate text-[4cqw]">{line1}</span>
-            <span className="truncate text-[4cqw]">{label.name || "—"}</span>
-            {label.set ? (
-              <span className="truncate text-[4cqw]">{label.set}</span>
-            ) : null}
+      {imageBacked ? (
+        // The flip artwork supplies the border, watermark and PSA mark; only the
+        // editable text below is overlaid on top of it.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={labelImage}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className={styles.labelImage}
+        />
+      ) : (
+        <div className={styles.labelSecurityPattern} />
+      )}
+
+      <div className={styles.labelContent}>
+        <div className={styles.identityBlock}>
+          <div className={styles.identityText}>
+            <span>{line1}</span>
+            <span>{label.name || "—"}</span>
+            {label.set ? <span>{label.set}</span> : null}
           </div>
-          <span
-            aria-hidden
-            className="h-[3.8cqw] w-[30cqw] bg-[repeating-linear-gradient(90deg,#161616_0_0.26cqw,transparent_0.26cqw_0.64cqw)]"
-          />
+          <Barcode />
         </div>
 
-        {/* Uniform right column: number / grade label / grade / cert, all
-            flush to the right edge of the label. */}
-        <div className="flex shrink-0 flex-col items-end justify-between text-right font-normal leading-[1.05] tracking-[0.01em]">
-          <span className="text-[4cqw]">{label.number ? `#${label.number}` : "—"}</span>
-          <span className="text-[4cqw]">{label.gradeLabel}</span>
-          <span className="text-[4cqw]">{label.grade}</span>
-          <span className="text-[4cqw]">{label.cert}</span>
+        <div className={styles.gradeBlock}>
+          <div className={styles.gradeText}>
+            <span>{label.number ? `#${label.number}` : "—"}</span>
+            <span>{label.gradeLabel}</span>
+            <span>{label.grade}</span>
+          </div>
+          <span>{label.cert}</span>
         </div>
       </div>
 
-      {/* PSA mark on a silver chip straddling the bottom trim (the "connects to
-          lighthouse" cue), breaking the red border. */}
-      <span className="absolute bottom-[-1.1cqw] left-1/2 flex -translate-x-1/2 items-center rounded-[0.3cqw] bg-[linear-gradient(135deg,#e9ebef,#c7ccd6)] px-[1.1cqw] py-[0.6cqw] shadow-[0_0_0.3cqw_rgba(0,0,0,0.15)] [&_img]:!block [&_img]:!h-[3.8cqw] [&_img]:!w-auto">
-        {logo}
-      </span>
+      {/* CSS mark only — when image-backed, the PSA mark is baked into the art. */}
+      {imageBacked ? null : <span className={styles.labelBridge}>{logo}</span>}
     </div>
+  );
+}
+
+function Barcode() {
+  return (
+    <span className={styles.barcode} aria-hidden>
+      {BARCODE_BARS.map((width, index) => (
+        <span key={`${width}-${index}`} style={{ flexGrow: width }} />
+      ))}
+    </span>
   );
 }
