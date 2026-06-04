@@ -143,7 +143,10 @@ function SearchBody({
             aria-label={`${card.name} (${card.id})`}
             aria-pressed={active}
             className={cn(
-              "group relative overflow-hidden rounded-sm border transition-transform",
+              // Aspect ratio lives on the container (not the <img>): iOS Safari
+              // mis-sizes aspect-ratio set on a replaced element inside a
+              // height-capped grid, collapsing the cells. The image fills it.
+              "group relative aspect-[5/7] overflow-hidden rounded-sm border transition-transform",
               "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none",
               active
                 ? "border-primary ring-2 ring-ring"
@@ -158,7 +161,7 @@ function SearchBody({
               alt={card.name}
               loading="lazy"
               draggable={false}
-              className="aspect-[2.5/3.5] w-full select-none object-cover"
+              className="absolute inset-0 size-full select-none object-cover"
             />
           </button>
         );
