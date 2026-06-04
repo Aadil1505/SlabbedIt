@@ -58,6 +58,21 @@ type PSASlabProps = {
   className?: string;
 };
 
+// Marks the slab body so an exporter can find it in a cloned DOM. The live body
+// is semi-transparent and leans on `backdrop-filter` to read as near-white
+// acrylic, but foreignObject-based capture (modern-screenshot, html-to-image,
+// dom-to-image — all the same technique) can't render backdrop-filter, so the
+// background bleeds through. The studio swaps in EXPORT_SLAB_BG on the clone.
+export const SLAB_BODY_ATTR = "data-slab-body";
+
+// The slab body's two translucent gradients (matching the `background` below),
+// composited over an opaque light base. Used by the export clone hook so the
+// body stays neutral with no live-DOM change and no on-screen flicker.
+export const EXPORT_SLAB_BG =
+  "linear-gradient(104deg,rgb(255 255 255/32%),transparent 15% 82%,rgb(185 198 216/22%))," +
+  "linear-gradient(164deg,rgb(250 252 255/62%),rgb(224 232 241/46%) 48%,rgb(198 209 223/50%))," +
+  "rgb(236 240 246)";
+
 export function PSASlab({
   src,
   alt = "Graded trading card",
@@ -78,6 +93,7 @@ export function PSASlab({
       <div
         ref={ref}
         {...handlers}
+        {...{ [SLAB_BODY_ATTR]: "" }}
         className={cn(
           "relative isolate aspect-[100/162.7] w-full overflow-hidden rounded-[3.5cqw]",
           "[background:linear-gradient(104deg,rgb(255_255_255/32%),transparent_15%_82%,rgb(185_198_216/22%)),linear-gradient(164deg,rgb(250_252_255/62%),rgb(224_232_241/46%)_48%,rgb(198_209_223/50%))]",

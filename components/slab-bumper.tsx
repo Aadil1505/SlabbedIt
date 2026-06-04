@@ -29,6 +29,11 @@ const SPARKLE_SVG = encodeURIComponent(
 );
 const SPARKLE_URI = `url("data:image/svg+xml,${SPARKLE_SVG}")`;
 
+// Marks the colored bumper face so an exporter can find it in a cloned DOM.
+// The translucent face uses `backdrop-blur`, which foreignObject-based capture
+// can't render — so the studio swaps in an opaque frosted fill on the clone.
+export const BUMPER_FACE_ATTR = "data-bumper-face";
+
 type BumperPreset = { color: string; translucent?: boolean };
 
 export const BUMPER_PRESETS = {
@@ -144,6 +149,7 @@ export function SlabBumper({
               meets the slab edge. The center is transparent (no fill behind the
               slab). */}
           <div
+            {...{ [BUMPER_FACE_ATTR]: isClear ? "translucent" : "solid" }}
             className={cn(
               "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] -z-10 rounded-[var(--bumper-radius)] p-[var(--bumper-pad)]",
               "drop-shadow-[0_2cqw_5cqw_rgba(8,11,18,0.45)]",
