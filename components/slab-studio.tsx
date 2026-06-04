@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Color from "color";
-import { Check, Copy, Download, Pencil, Upload } from "lucide-react";
+import { ArrowUp, Check, Copy, Download, Pencil, Upload } from "lucide-react";
 import { domToBlob, domToPng } from "modern-screenshot";
 import { type CardResumeModel } from "@tcgdex/sdk";
 import { tcgdex } from "@/lib/tcgdex";
@@ -175,6 +175,17 @@ export function SlabStudio() {
   const [finish, setFinish] = useState<Finish>("matte");
   const [translucent, setTranslucent] = useState(false);
   const [interactive, setInteractive] = useState(true);
+
+  // On mobile the controls stack below the slab, so once someone scrolls down
+  // to configure, a floating button offers a quick jump back up to the preview.
+  // (On desktop the panel is always in view, and the button is hidden anyway.)
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 280);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // The element captured on export. It wraps the slab assembly and, crucially,
   // sits *above* the `@container` on the slab/bumper — so every `cqw` still
@@ -636,6 +647,25 @@ export function SlabStudio() {
           </Section>
         </div>
       </aside>
+
+      {/* Mobile-only jump-to-preview button. Fades in once scrolled past the
+          slab so the card is one tap away from anywhere in the controls. */}
+      <button
+        type="button"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        aria-label="Scroll up to your slab"
+        className={cn(
+          "fixed right-5 bottom-6 z-40 grid size-12 place-items-center rounded-full",
+          "border border-border bg-primary text-primary-foreground shadow-lg shadow-black/25",
+          "transition-all duration-200 lg:hidden",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
+          showScrollTop
+            ? "scale-100 opacity-100"
+            : "pointer-events-none translate-y-2 scale-90 opacity-0",
+        )}
+      >
+        <ArrowUp className="size-5" />
+      </button>
     </div>
   );
 }
