@@ -152,10 +152,11 @@ export function PSASlab({
 
         {/* Card window */}
         <div className="relative flex min-h-0 flex-1 items-center justify-center">
-          {/* Card well — width-driven (fills the window width, height follows
-              the 5/7 ratio) and vertically centered, so the card keeps an even
-              acrylic margin and the beveled channel hugs it symmetrically. */}
-          <div className="relative w-full max-h-full aspect-5/7">
+          {/* Card well — height-driven (fills the window height, width follows
+              the 5/7 ratio, capped to the width) so the whole card always fits
+              and never crops, whatever the label's height. The card is centered,
+              and the beveled channel hugs it. */}
+          <div className="relative h-full max-w-full aspect-5/7">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src || PLACEHOLDER_SRC}
