@@ -2,12 +2,18 @@
 
 import { useCallback, useId, useRef, useState } from "react";
 import Color from "color";
-import { Check, Copy, Download, Pencil } from "lucide-react";
+import { Check, Copy, Download, Pencil, Upload } from "lucide-react";
 import { domToBlob, domToPng } from "modern-screenshot";
 import { type CardResumeModel } from "@tcgdex/sdk";
 import { tcgdex } from "@/lib/tcgdex";
 import { CardSearch } from "@/components/card-search";
-import { PSASlab, SAMPLE_CARD_SRC, type LabelData } from "@/components/psa-slab";
+import {
+  EXPORT_SLAB_BG,
+  PSASlab,
+  SAMPLE_CARD_SRC,
+  SLAB_BODY_ATTR,
+  type LabelData,
+} from "@/components/psa-slab";
 import { Button } from "@/components/ui/button";
 import {
   ColorPicker,
@@ -17,6 +23,7 @@ import {
   ColorPickerSelection,
 } from "@/components/ui/color-picker";
 import {
+  BUMPER_FACE_ATTR,
   BUMPER_PRESETS,
   SlabBumper,
   type BumperColorName,
@@ -73,9 +80,30 @@ function makeCert() {
 
 export function SlabStudio() {
   const ids = useId();
-  const urlId = `${ids}-url`;
 
   const [cardSrc, setCardSrc] = useState(SAMPLE_CARD_SRC);
+
+  // Local upload: read the file straight to a data URL so the user's own card
+  // image never leaves the browser and always exports cleanly (no CORS taint,
+  // unlike an arbitrary remote URL). Non-images are ignored.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState(false);
+
+  function handleFile(file: File | null | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError(true);
+      return;
+    }
+    setUploadError(false);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setCardSrc(reader.result);
+    };
+    reader.onerror = () => setUploadError(true);
+    reader.readAsDataURL(file);
+  }
 
   // The printed grade label. Defaults describe the sample card so it reads
   // right immediately. Grade is always user-set (the catalog has none) —
@@ -141,7 +169,7 @@ export function SlabStudio() {
   const [color, setColor] = useState<string>("red");
   // The last custom color, kept even while a preset is active so the gear
   // swatch keeps previewing it and reopening the picker resumes from it.
-  const [customColor, setCustomColor] = useState("#7c4dff");
+  const [customColor, setCustomColor] = useState("#06b6d4");
   const [thickness, setThickness] = useState<Thickness>("standard");
   const [bumperRadius, setBumperRadius] = useState(7.2);
   const [finish, setFinish] = useState<Finish>("matte");
@@ -154,6 +182,7 @@ export function SlabStudio() {
   const stageRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<null | "download" | "copy">(null);
   const [copied, setCopied] = useState(false);
+  const [exportError, setExportError] = useState(false);
 
   // Selecting a preset adopts its native material, so the clear/smoke/glow
   // presets read see-through immediately. The toggle can still override after.
@@ -176,19 +205,48 @@ export function SlabStudio() {
     [],
   );
 
-  // Capture on a solid theme background (not the page's glows) so the light
-  // acrylic pops and the dropped backdrop-filter blur is invisible — blurring a
-  // flat color yields the same flat color. 3× scale keeps it crisp.
+  // Export just the subject on a transparent canvas — no painted background, so
+  // the slab (and bumper, when shown) drops cleanly onto anything. 3× scale
+  // keeps it crisp.
+  //
+  // The fixes below run on the *clone only* (onCloneNode, after computed styles
+  // are inlined, so the inline override wins) — the live DOM is never touched,
+  // no flicker. Both exist because modern-screenshot rasterizes via an SVG
+  // foreignObject, where the browser ignores `backdrop-filter`:
+  //   · slab body: leans on backdrop-filter to read as near-white acrylic, so
+  //     we lay an opaque base under the same gradients (else the bumper bleeds
+  //     through the translucent fill).
+  //   · translucent bumper face: leans on backdrop-blur over the page; with no
+  //     backdrop to blur it would export as a faint wash, so we swap in an
+  //     opaque frosted fill of the bumper color.
   function captureOptions() {
+    const resolvedBumper = isCustomActive
+      ? color
+      : PRESETS[color as BumperColorName].color;
     return {
-      backgroundColor: getComputedStyle(document.body).backgroundColor,
+      backgroundColor: null,
       scale: 3,
+      onCloneNode(cloned: Node) {
+        if (!(cloned instanceof Element)) return;
+        const body = cloned.querySelector<HTMLElement>(`[${SLAB_BODY_ATTR}]`);
+        body?.style.setProperty("background", EXPORT_SLAB_BG, "important");
+
+        if (showBumper && translucent) {
+          const frosted = Color(resolvedBumper).mix(Color("white"), 0.28).hex();
+          cloned
+            .querySelectorAll<HTMLElement>(`[${BUMPER_FACE_ATTR}="translucent"]`)
+            .forEach((face) =>
+              face.style.setProperty("background", frosted, "important"),
+            );
+        }
+      },
     };
   }
 
   async function handleDownload() {
     const node = stageRef.current;
     if (!node || busy) return;
+    setExportError(false);
     setBusy("download");
     try {
       const dataUrl = await domToPng(node, captureOptions());
@@ -196,6 +254,8 @@ export function SlabStudio() {
       a.href = dataUrl;
       a.download = "slabbedit-psa-slab.png";
       a.click();
+    } catch {
+      setExportError(true);
     } finally {
       setBusy(null);
     }
@@ -204,6 +264,7 @@ export function SlabStudio() {
   async function handleCopy() {
     const node = stageRef.current;
     if (!node || busy) return;
+    setExportError(false);
     setBusy("copy");
     try {
       // Hand the blob *Promise* to ClipboardItem so the write stays inside the
@@ -215,16 +276,13 @@ export function SlabStudio() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard image write unsupported (older browser) — Download still works.
+      setExportError(true);
     } finally {
       setBusy(null);
     }
   }
   const slab = (
-    <PSASlab
-      src={cardSrc}
-      label={label}
-      interactive={interactive}
-    />
+    <PSASlab src={cardSrc} label={label} interactive={interactive} />
   );
 
   return (
@@ -260,17 +318,59 @@ export function SlabStudio() {
           <Section title="Card">
             <CardSearch onSelect={handleSelectCard} selectedURL={cardSrc} />
             <Row>
-              <Label htmlFor={urlId}>Or paste an image URL</Label>
-              <Input
-                id={urlId}
-                value={cardSrc}
-                onChange={(e) => setCardSrc(e.target.value)}
-                placeholder="https://…/card.png"
-                spellCheck={false}
-              />
+              <Label htmlFor={`${ids}-upload`}>Or upload your own card</Label>
               <button
                 type="button"
-                onClick={() => setCardSrc(SAMPLE_CARD_SRC)}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  handleFile(e.dataTransfer.files?.[0]);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-4 py-6 text-center transition-colors",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                  dragOver
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-background/40 hover:border-foreground/40 hover:bg-background/60",
+                )}
+              >
+                <Upload className="size-5 text-muted-foreground" />
+                <span className="text-sm text-foreground">
+                  Drop a photo or click to upload
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  PNG or JPG of your card
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                id={`${ids}-upload`}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  handleFile(e.target.files?.[0]);
+                  // Reset so re-picking the same file fires onChange again.
+                  e.target.value = "";
+                }}
+              />
+              {uploadError && (
+                <span className="text-xs text-destructive">
+                  That file isn’t a supported image. Try a PNG or JPG.
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadError(false);
+                  setCardSrc(SAMPLE_CARD_SRC);
+                }}
                 className="self-start text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
               >
                 Reset to sample card
@@ -527,6 +627,12 @@ export function SlabStudio() {
                 {copied ? "Copied" : busy === "copy" ? "Copying…" : "Copy"}
               </Button>
             </div>
+            {exportError && (
+              <span className="text-xs text-destructive">
+                Couldn’t capture the slab. Try uploading the card image and
+                exporting again.
+              </span>
+            )}
           </Section>
         </div>
       </aside>

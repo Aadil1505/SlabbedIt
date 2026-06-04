@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+![SlabbedIt](./public/og.png)
 
-First, run the development server:
+# SlabbedIt
+
+**Preview your trading card sealed in a graded PSA-style slab — before you pay to submit it.**
+
+Drop in a card, pick a grade and label details, and get a photorealistic graded-slab
+render you can admire, screenshot, and share. The entire slab — acrylic case, bevel,
+gloss, floor shadow, protective bumper, printed label — is built in **pure CSS/DOM**,
+no canvas or WebGL, so it stays razor-sharp at any size and renders instantly.
+
+</div>
+
+---
+
+## Features
+
+- 🃏 **Bring your own card** — search the [TCGdex](https://tcgdex.dev) catalog or upload a photo of your own (read locally, never uploaded).
+- 🏷️ **Editable grade label** — PSA-style grade scale, card name, set, year, number, and cert; auto-filled from the catalog and fully editable.
+- 🛡️ **Configurable bumper** — color presets or a custom picker, thickness, corner radius, matte/gloss finish, and translucent "frosted" materials with embedded glitter.
+- ✨ **Live material realism** — cursor-driven tilt, gloss tracking, and directional acrylic reflections.
+- 🖼️ **One-click export** — download or copy a clean, transparent-background PNG of just the slab, at 3× resolution.
+- 🌗 **Light & dark themes** — a warm-paper light mode and a dark "gallery stage" (the default).
+
+## Tech stack
+
+- [Next.js 16](https://nextjs.org) (App Router) + [React 19](https://react.dev)
+- [Tailwind CSS v4](https://tailwindcss.com) with a token-driven theme (`app/globals.css`)
+- [shadcn/ui](https://ui.shadcn.com) primitives
+- [TCGdex SDK](https://tcgdex.dev) for card data and imagery
+- [modern-screenshot](https://github.com/qq15725/modern-screenshot) for DOM-to-PNG export
+- Pure CSS/DOM slab rendering — no canvas, no 3D
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+# install (Bun is the primary package manager; npm/pnpm/yarn also work)
+bun install
+
+# run the dev server
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script        | Description                  |
+| ------------- | ---------------------------- |
+| `bun dev`     | Start the dev server         |
+| `bun run build` | Production build           |
+| `bun start`   | Serve the production build   |
+| `bun run lint`  | Lint with ESLint           |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How it works
 
-## Learn More
+The slab is a representational CSS model. Every dimension is expressed in
+container-query units (`cqw`) relative to the slab's width, so the whole case scales
+as one piece from a thumbnail to a full-screen hero. The case reads as clear plastic
+from layered hard edges, rails, and directional reflections rather than an opaque
+fill. Export composites the live DOM to a transparent PNG via `modern-screenshot`,
+with a few capture-time adjustments to work around effects the rasterizer can't
+reproduce (notably `backdrop-filter`).
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/                Next.js App Router (layout, page, metadata routes, icons)
+components/
+  slab-studio.tsx   The studio: controls + export
+  psa-slab.tsx      The pure-CSS slab and printed label
+  slab-bumper.tsx   The protective bumper wrapper
+  card-search.tsx   TCGdex catalog search
+  site-header.tsx   Navbar
+  site-footer.tsx   Footer
+  ui/               shadcn/ui primitives
+lib/                tcgdex client, cursor tilt, helpers
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Roadmap
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See [`TODO.md`](./TODO.md) for deferred work (reduced-motion fallback, analytics,
+export translucency realism, and product-scope decisions).
 
-## Deploy on Vercel
+## Disclaimer
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+SlabbedIt is an independent fan project. It is **not affiliated with, endorsed by, or
+sponsored by PSA** (Professional Sports Authenticator) or any grading company. Slab
+images, labels, grades, and certificate numbers are illustrative only — they are
+**not** authentication or official grading results.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Acknowledgements
+
+Card data and imagery courtesy of [TCGdex](https://tcgdex.dev).
