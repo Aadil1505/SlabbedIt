@@ -4,8 +4,10 @@ import { useCallback, useId, useRef, useState } from "react";
 import Color from "color";
 import { Check, Copy, Download, Pencil } from "lucide-react";
 import { domToBlob, domToPng } from "modern-screenshot";
+import { type CardResumeModel } from "@tcgdex/sdk";
+import { tcgdex } from "@/lib/tcgdex";
 import { CardSearch } from "@/components/card-search";
-import { PSASlab } from "@/components/psa-slab";
+import { PSASlab, type LabelData } from "@/components/psa-slab";
 import { Button } from "@/components/ui/button";
 import {
   ColorPicker,
@@ -95,12 +97,95 @@ const FINISH_OPTS: { value: Finish; label: string }[] = [
   { value: "gloss", label: "Gloss" },
 ];
 
+const LABEL_MODE_OPTS: { value: "logo" | "accurate"; label: string }[] = [
+  { value: "logo", label: "Logo" },
+  { value: "accurate", label: "Accurate" },
+];
+
+// PSA's grade scale and the abbreviated qualifier printed beside each number.
+const PSA_GRADES: { grade: string; gradeLabel: string }[] = [
+  { grade: "10", gradeLabel: "GEM MT" },
+  { grade: "9", gradeLabel: "MINT" },
+  { grade: "8", gradeLabel: "NM-MT" },
+  { grade: "7", gradeLabel: "NM" },
+  { grade: "6", gradeLabel: "EX-MT" },
+  { grade: "5", gradeLabel: "EX" },
+  { grade: "4", gradeLabel: "VG-EX" },
+  { grade: "3", gradeLabel: "VG" },
+  { grade: "2", gradeLabel: "GOOD" },
+  { grade: "1", gradeLabel: "PR" },
+];
+
+// A believable 8-digit PSA-style cert number.
+function makeCert() {
+  return String(Math.floor(10000000 + Math.random() * 90000000));
+}
+
 export function SlabStudio() {
   const ids = useId();
   const urlId = `${ids}-url`;
 
   const [cardSrc, setCardSrc] = useState(SAMPLE_CARD);
   const [grader, setGrader] = useState<GraderId>("psa");
+
+  // Label: "logo" keeps the original mark; "accurate" prints a real grade
+  // lockup. Defaults describe the sample card so accurate mode reads right
+  // immediately. Grade is always user-set (the catalog has none) — default 10.
+  const [labelMode, setLabelMode] = useState<"logo" | "accurate">("logo");
+  const [label, setLabel] = useState<LabelData>({
+    name: "Charizard VMAX",
+    set: "Shining Fates",
+    year: "2021",
+    number: "SV107",
+    grade: "10",
+    gradeLabel: "GEM MT",
+    cert: "53917042",
+  });
+  // A new card pick is the only thing that overwrites the identity fields.
+  const pickSeq = useRef(0);
+
+  function setLabelField(key: keyof LabelData, value: string) {
+    setLabel((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Event-driven auto-fill (not an effect, so manual edits aren't clobbered).
+  // Identity comes from getCard() right away; year needs a 2nd cached fetch and
+  // fills in when it resolves, degrading to an editable blank if it fails.
+  async function handleSelectCard(card: CardResumeModel) {
+    setCardSrc(card.getImageURL("high", "png"));
+    const seq = ++pickSeq.current;
+    setLabel((prev) => ({
+      ...prev,
+      name: card.name,
+      number: card.localId,
+      set: "",
+      year: "",
+      cert: makeCert(),
+    }));
+    try {
+      const full = await card.getCard();
+      if (seq !== pickSeq.current) return;
+      setLabel((prev) => ({
+        ...prev,
+        name: full.name,
+        number: full.localId,
+        set: full.set?.name ?? "",
+      }));
+      // The card's nested `set` is plain data (no `getSet`), so fetch the full
+      // set by id to get its release year. Cached by the SDK.
+      const setId = full.set?.id;
+      if (setId) {
+        const set = await tcgdex.set.get(setId);
+        if (seq !== pickSeq.current) return;
+        setLabel((prev) => ({
+          ...prev,
+          year: (set?.releaseDate ?? "").slice(0, 4),
+        }));
+      }
+    } catch {
+      // Leave set/year blank and editable.
+    }
+  }
 
   const [showBumper, setShowBumper] = useState(true);
   // `color` is either a preset name or a literal hex (custom). The bumper's
@@ -205,6 +290,8 @@ export function SlabStudio() {
       src={cardSrc}
       logo={logo}
       labelColor={activeGrader.color}
+      labelMode={labelMode}
+      label={label}
       interactive={interactive}
     />
   );
@@ -240,7 +327,7 @@ export function SlabStudio() {
       <aside className="w-full shrink-0 border-t border-border bg-sidebar/85 backdrop-blur-xl lg:w-[360px] lg:border-t-0 lg:border-l lg:overflow-y-auto">
         <div className="flex flex-col gap-8 p-6">
           <Section title="Card">
-            <CardSearch onSelect={setCardSrc} selectedURL={cardSrc} />
+            <CardSearch onSelect={handleSelectCard} selectedURL={cardSrc} />
             <Row>
               <Label htmlFor={urlId}>Or paste an image URL</Label>
               <Input
@@ -266,6 +353,98 @@ export function SlabStudio() {
                 onChange={setGrader}
               />
             </Row>
+          </Section>
+
+          <Section title="Label">
+            <Row>
+              <Label>Mode</Label>
+              <Segmented
+                options={LABEL_MODE_OPTS}
+                value={labelMode}
+                onChange={setLabelMode}
+              />
+            </Row>
+
+            <fieldset
+              disabled={labelMode !== "accurate"}
+              className="flex flex-col gap-6 transition-opacity disabled:opacity-40"
+            >
+              <Row>
+                <Label>Grade</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {PSA_GRADES.map(({ grade, gradeLabel }) => {
+                    const active = label.grade === grade;
+                    return (
+                      <button
+                        key={grade}
+                        type="button"
+                        onClick={() =>
+                          setLabel((prev) => ({ ...prev, grade, gradeLabel }))
+                        }
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-md border py-1.5 font-heading text-sm transition-colors",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-foreground hover:bg-accent/40",
+                        )}
+                      >
+                        {grade}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {label.gradeLabel}
+                </span>
+              </Row>
+
+              <Row>
+                <Label htmlFor={`${ids}-lname`}>Card name</Label>
+                <Input
+                  id={`${ids}-lname`}
+                  value={label.name}
+                  onChange={(e) => setLabelField("name", e.target.value)}
+                />
+              </Row>
+              <Row>
+                <Label htmlFor={`${ids}-lset`}>Set</Label>
+                <Input
+                  id={`${ids}-lset`}
+                  value={label.set}
+                  onChange={(e) => setLabelField("set", e.target.value)}
+                  placeholder="—"
+                />
+              </Row>
+              <div className="grid grid-cols-2 gap-3">
+                <Row>
+                  <Label htmlFor={`${ids}-lyear`}>Year</Label>
+                  <Input
+                    id={`${ids}-lyear`}
+                    value={label.year}
+                    onChange={(e) => setLabelField("year", e.target.value)}
+                    placeholder="—"
+                  />
+                </Row>
+                <Row>
+                  <Label htmlFor={`${ids}-lnum`}>Number</Label>
+                  <Input
+                    id={`${ids}-lnum`}
+                    value={label.number}
+                    onChange={(e) => setLabelField("number", e.target.value)}
+                  />
+                </Row>
+              </div>
+              <Row>
+                <Label htmlFor={`${ids}-lcert`}>Cert</Label>
+                <Input
+                  id={`${ids}-lcert`}
+                  value={label.cert}
+                  onChange={(e) => setLabelField("cert", e.target.value)}
+                />
+              </Row>
+            </fieldset>
           </Section>
 
           <Section title="Bumper">

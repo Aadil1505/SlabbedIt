@@ -4,21 +4,19 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Search } from "lucide-react";
 // `CardResumeModel` is the result class that carries `getImageURL()`; the
 // plain `CardResume` export is just the data interface without it.
-import TCGdex, { Query, type CardResumeModel } from "@tcgdex/sdk";
+import { Query, type CardResumeModel } from "@tcgdex/sdk";
+import { tcgdex } from "@/lib/tcgdex";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-// One instance for the whole client. Its built-in cache (memory + web-storage)
-// then persists across renders and remounts, so repeating a search is free.
-const tcgdex = new TCGdex("en");
 
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 24;
 
 type Props = {
-  // Called with a ready-to-use high-res image URL when a card is picked.
-  onSelect: (imageURL: string) => void;
+  // Called with the picked card so the parent can set the image and, for the
+  // accurate label, enrich it with set/year metadata.
+  onSelect: (card: CardResumeModel) => void;
   // The currently shown card URL, so we can mark the active result.
   selectedURL?: string;
 };
@@ -110,7 +108,7 @@ function SearchBody({
   status: "idle" | "loading" | "error";
   results: CardResumeModel[];
   selectedURL?: string;
-  onSelect: (url: string) => void;
+  onSelect: (card: CardResumeModel) => void;
 }) {
   if (status === "error") {
     return <Hint>Couldn’t reach TCGdex. Check your connection and retry.</Hint>;
@@ -140,7 +138,7 @@ function SearchBody({
           <button
             key={card.id}
             type="button"
-            onClick={() => onSelect(full)}
+            onClick={() => onSelect(card)}
             title={`${card.name} · ${card.id}`}
             aria-label={`${card.name} (${card.id})`}
             aria-pressed={active}

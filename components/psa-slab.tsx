@@ -48,14 +48,32 @@ const SCRIBE_H =
 const SCRIBE_V =
   "pointer-events-none absolute w-[0.12cqw] bg-[rgba(90,103,122,0.45)] shadow-[0.14cqw_0_0.16cqw_-0.02cqw_rgba(255,255,255,0.7)]";
 
+/** Printed details for the "accurate" label mode. */
+export type LabelData = {
+  name: string;
+  set: string;
+  year: string;
+  number: string;
+  grade: string;
+  gradeLabel: string;
+  cert: string;
+};
+
 type PSASlabProps = {
   /** Card image URL or data URI. Falls back to a holo placeholder. */
   src?: string;
   alt?: string;
-  /** Override the centered label mark. Defaults to the PSA logo. */
+  /** The centered label mark (logo mode) / small brand mark (accurate mode). */
   logo?: React.ReactNode;
   /** Label border color (the grading company's house color). */
   labelColor?: string;
+  /**
+   * `logo` keeps the original centered-mark label; `accurate` prints a real
+   * grade lockup (grade + card identity + cert/barcode) from `label`.
+   */
+  labelMode?: "logo" | "accurate";
+  /** Printed details used when `labelMode` is `accurate`. */
+  label?: LabelData;
   /** Cursor-follow tilt + gloss. Default true. */
   interactive?: boolean;
   className?: string;
@@ -78,6 +96,8 @@ export function PSASlab({
   alt = "Graded trading card",
   logo = <DefaultMark />,
   labelColor = "#cf1f2e",
+  labelMode = "logo",
+  label,
   interactive = true,
   className,
 }: PSASlabProps) {
@@ -119,12 +139,16 @@ export function PSASlab({
             band of acrylic shows between the label and the side (body padding
             is 8cqw, the tub sits at 2.6cqw, so -3.5cqw lands the label at
             ~4.5cqw from the edge). */}
-        <div
-          style={{ borderColor: labelColor }}
-          className="-mx-[3.5cqw] flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]"
-        >
-          {logo}
-        </div>
+        {labelMode === "accurate" && label ? (
+          <AccurateLabel label={label} labelColor={labelColor} logo={logo} />
+        ) : (
+          <div
+            style={{ borderColor: labelColor }}
+            className="-mx-[3.5cqw] flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]"
+          >
+            {logo}
+          </div>
+        )}
 
         {/* Card window */}
         <div className="relative flex min-h-0 flex-1 items-center justify-center">
@@ -167,6 +191,69 @@ export function PSASlab({
         {/* Gloss sheen — fixed diagonal + cursor-tracking highlight */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_var(--mx,50%)_var(--my,26%),rgba(255,255,255,0.28),rgba(255,255,255,0)_44%),linear-gradient(118deg,transparent_38%,rgba(255,255,255,0.22)_47%,rgba(255,255,255,0.03)_55%,transparent_62%)]" />
       </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------- accurate label */
+
+// A faithful PSA "flip" modelled on a real label: white field inside red trim.
+// Left = identity block (YEAR BRAND / NAME / SET) over the barcode. Right = a
+// uniform, evenly-spaced four-line column (#number / grade label / grade / cert)
+// — the grade is NOT enlarged, and the cert is black, matching the real label.
+// The PSA mark sits on a silver chip straddling the bottom trim. Text is the
+// condensed grotesque PSA uses (Univers Condensed, Roboto Condensed fallback).
+// Material colors are literal by design (DESIGN.md).
+function AccurateLabel({
+  label,
+  labelColor,
+  logo,
+}: {
+  label: LabelData;
+  labelColor: string;
+  logo: React.ReactNode;
+}) {
+  const line1 = [label.year, "POKEMON"].filter(Boolean).join(" ");
+
+  return (
+    <div
+      style={{
+        borderColor: labelColor,
+        fontFamily: "var(--font-univers), var(--font-condensed), sans-serif",
+      }}
+      className="relative -mx-[3.5cqw] rounded-[1cqw] border-[0.9cqw] bg-white text-[#161616] uppercase shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]"
+    >
+      <div className="flex items-stretch gap-[2cqw] px-[2.8cqw] py-[2.6cqw]">
+        {/* Identity (top) over barcode (bottom) */}
+        <div className="flex min-w-0 flex-1 flex-col justify-between gap-[2.4cqw]">
+          <div className="flex min-w-0 flex-col font-normal leading-[1.16] tracking-[0.01em]">
+            <span className="truncate text-[4cqw]">{line1}</span>
+            <span className="truncate text-[4cqw]">{label.name || "—"}</span>
+            {label.set ? (
+              <span className="truncate text-[4cqw]">{label.set}</span>
+            ) : null}
+          </div>
+          <span
+            aria-hidden
+            className="h-[3.8cqw] w-[30cqw] bg-[repeating-linear-gradient(90deg,#161616_0_0.26cqw,transparent_0.26cqw_0.64cqw)]"
+          />
+        </div>
+
+        {/* Uniform right column: number / grade label / grade / cert, all
+            flush to the right edge of the label. */}
+        <div className="flex shrink-0 flex-col items-end justify-between text-right font-normal leading-[1.05] tracking-[0.01em]">
+          <span className="text-[4cqw]">{label.number ? `#${label.number}` : "—"}</span>
+          <span className="text-[4cqw]">{label.gradeLabel}</span>
+          <span className="text-[4cqw]">{label.grade}</span>
+          <span className="text-[4cqw]">{label.cert}</span>
+        </div>
+      </div>
+
+      {/* PSA mark on a silver chip straddling the bottom trim (the "connects to
+          lighthouse" cue), breaking the red border. */}
+      <span className="absolute bottom-[-1.1cqw] left-1/2 flex -translate-x-1/2 items-center rounded-[0.3cqw] bg-[linear-gradient(135deg,#e9ebef,#c7ccd6)] px-[1.1cqw] py-[0.6cqw] shadow-[0_0_0.3cqw_rgba(0,0,0,0.15)] [&_img]:!block [&_img]:!h-[3.8cqw] [&_img]:!w-auto">
+        {logo}
+      </span>
     </div>
   );
 }

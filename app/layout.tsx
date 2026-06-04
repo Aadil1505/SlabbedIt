@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Roboto_Condensed } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -8,6 +8,34 @@ import { ThemeProvider } from "@/components/theme-provider";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+// Univers Condensed (regular + bold) is the actual condensed grotesque PSA
+// prints on its labels. Used only on the accurate slab label. Self-hosted by
+// next/font, so it embeds cleanly when the slab is exported to PNG.
+const univers = localFont({
+  src: [
+    {
+      path: "../public/fonts/UniversCondensed-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/UniversCondensed-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-univers",
+  display: "swap",
+});
+
+// Roboto Condensed is the free fallback if Univers ever fails to load — the same
+// Helvetica-Condensed-Bold look.
+const robotoCondensed = Roboto_Condensed({
+  variable: "--font-condensed",
+  subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 // Departure Mono is the identity face — pixel/retro, used only where it carries
@@ -34,7 +62,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${departureMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${departureMono.variable} ${univers.variable} ${robotoCondensed.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider
