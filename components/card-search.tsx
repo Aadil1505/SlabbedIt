@@ -143,10 +143,7 @@ function SearchBody({
             aria-label={`${card.name} (${card.id})`}
             aria-pressed={active}
             className={cn(
-              // Aspect ratio lives on the container (not the <img>): iOS Safari
-              // mis-sizes aspect-ratio set on a replaced element inside a
-              // height-capped grid, collapsing the cells. The image fills it.
-              "group relative aspect-[5/7] overflow-hidden rounded-sm border transition-transform",
+              "group block overflow-hidden rounded-sm border transition-transform",
               "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none",
               active
                 ? "border-primary ring-2 ring-ring"
@@ -154,14 +151,19 @@ function SearchBody({
             )}
           >
             {/* Plain <img> on purpose: next/image would route these through
-                Vercel's Image Optimization and meter against the plan. */}
+                Vercel's Image Optimization and meter against the plan.
+                Width/height attributes give the intrinsic ratio so the cell
+                reserves correct height on every browser (CSS aspect-ratio on a
+                replaced element breaks inside this capped grid on iOS Safari). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={thumb}
               alt={card.name}
+              width={245}
+              height={337}
               loading="lazy"
               draggable={false}
-              className="absolute inset-0 size-full select-none object-cover"
+              className="block h-auto w-full select-none"
             />
           </button>
         );
