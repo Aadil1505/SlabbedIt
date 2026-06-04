@@ -97,11 +97,6 @@ const FINISH_OPTS: { value: Finish; label: string }[] = [
   { value: "gloss", label: "Gloss" },
 ];
 
-const LABEL_MODE_OPTS: { value: "logo" | "accurate"; label: string }[] = [
-  { value: "logo", label: "Logo" },
-  { value: "accurate", label: "Accurate" },
-];
-
 // PSA's grade scale and the abbreviated qualifier printed beside each number.
 const PSA_GRADES: { grade: string; gradeLabel: string }[] = [
   { grade: "10", gradeLabel: "GEM MT" },
@@ -128,10 +123,9 @@ export function SlabStudio() {
   const [cardSrc, setCardSrc] = useState(SAMPLE_CARD);
   const [grader, setGrader] = useState<GraderId>("psa");
 
-  // Label: "logo" keeps the original mark; "accurate" prints a real grade
-  // lockup. Defaults describe the sample card so accurate mode reads right
-  // immediately. Grade is always user-set (the catalog has none) — default 10.
-  const [labelMode, setLabelMode] = useState<"logo" | "accurate">("logo");
+  // The printed grade label. Defaults describe the sample card so it reads
+  // right immediately. Grade is always user-set (the catalog has none) —
+  // default 10.
   const [label, setLabel] = useState<LabelData>({
     name: "Charizard VMAX",
     set: "Shining Fates",
@@ -290,7 +284,6 @@ export function SlabStudio() {
       src={cardSrc}
       logo={logo}
       labelColor={activeGrader.color}
-      labelMode={labelMode}
       label={label}
       interactive={interactive}
     />
@@ -356,19 +349,7 @@ export function SlabStudio() {
           </Section>
 
           <Section title="Label">
-            <Row>
-              <Label>Mode</Label>
-              <Segmented
-                options={LABEL_MODE_OPTS}
-                value={labelMode}
-                onChange={setLabelMode}
-              />
-            </Row>
-
-            <fieldset
-              disabled={labelMode !== "accurate"}
-              className="flex flex-col gap-6 transition-opacity disabled:opacity-40"
-            >
+            <div className="flex flex-col gap-6">
               <Row>
                 <Label>Grade</Label>
                 <div className="grid grid-cols-5 gap-2">
@@ -444,7 +425,7 @@ export function SlabStudio() {
                   onChange={(e) => setLabelField("cert", e.target.value)}
                 />
               </Row>
-            </fieldset>
+            </div>
           </Section>
 
           <Section title="Bumper">
