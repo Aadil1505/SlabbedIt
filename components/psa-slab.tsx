@@ -115,8 +115,8 @@ export function PSASlab({
         ref={ref}
         {...handlers}
         className={cn(
-          "relative flex aspect-100/161 w-full flex-col gap-[5cqw]",
-          "rounded-[3cqw] px-[8cqw] pt-[5.5cqw] pb-[12cqw]",
+          "relative flex aspect-100/161 w-full flex-col gap-[3cqw]",
+          "rounded-[3cqw] px-[8cqw] pt-[5.5cqw] pb-[8.5cqw]",
           "shadow-[0_1.6cqw_5cqw_rgba(15,20,32,0.4),0_0.3cqw_1cqw_rgba(15,20,32,0.3)]",
           selfTilt &&
             "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
