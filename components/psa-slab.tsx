@@ -54,6 +54,8 @@ type PSASlabProps = {
   alt?: string;
   /** Override the centered label mark. Defaults to the PSA logo. */
   logo?: React.ReactNode;
+  /** Label border color (the grading company's house color). */
+  labelColor?: string;
   /** Cursor-follow tilt + gloss. Default true. */
   interactive?: boolean;
   className?: string;
@@ -75,6 +77,7 @@ export function PSASlab({
   src,
   alt = "Graded trading card",
   logo = <DefaultMark />,
+  labelColor = "#cf1f2e",
   interactive = true,
   className,
 }: PSASlabProps) {
@@ -103,7 +106,7 @@ export function PSASlab({
           "shadow-[0_1.6cqw_5cqw_rgba(15,20,32,0.4),0_0.3cqw_1cqw_rgba(15,20,32,0.3)]",
           selfTilt &&
             "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
-          "animate-in fade-in zoom-in-95 duration-700",
+          "animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none",
         )}
       >
         {/* Acrylic face — translucent fill, frosted backdrop, and the beveled
@@ -116,7 +119,10 @@ export function PSASlab({
             band of acrylic shows between the label and the side (body padding
             is 8cqw, the tub sits at 2.6cqw, so -3.5cqw lands the label at
             ~4.5cqw from the edge). */}
-        <div className="-mx-[3.5cqw] flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] border-[#cf1f2e] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]">
+        <div
+          style={{ borderColor: labelColor }}
+          className="-mx-[3.5cqw] flex items-center justify-center rounded-[1.4cqw] border-[0.7cqw] bg-white px-[2cqw] py-[6cqw] shadow-[0_0.4cqw_1cqw_rgba(0,0,0,.12)]"
+        >
           {logo}
         </div>
 

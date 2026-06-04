@@ -31,7 +31,7 @@ const SPARKLE_URI = `url("data:image/svg+xml,${SPARKLE_SVG}")`;
 
 type BumperPreset = { color: string; translucent?: boolean };
 
-const BUMPER_PRESETS = {
+export const BUMPER_PRESETS = {
   black: { color: "#1c2026" },
   graphite: { color: "#39404c" },
   white: { color: "#e8ebf0" },
@@ -146,7 +146,7 @@ export function SlabBumper({
             "shadow-[0_2cqw_5cqw_rgba(8,11,18,0.45)]",
             interactive &&
               "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1500px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
-            "animate-in fade-in zoom-in-95 duration-700",
+            "animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none",
           )}
         >
           {/* Colored acrylic/TPU face — masked to a ring (frame only); its own
