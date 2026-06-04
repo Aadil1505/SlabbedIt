@@ -7,7 +7,7 @@ product
 ## Users
 
 TCG and sports-card collectors who have a raw, ungraded card and want to see
-what it would look like sealed in a graded slab (PSA/CGC-style) before they pay
+what it would look like sealed in a PSA slab before they pay
 to submit it. They arrive with a card image in hand, are emotionally invested in
 the card, and want a fast, satisfying "show me" moment they can share with other
 collectors. They are hobbyists, not professionals: comfortable with card lingo
@@ -28,7 +28,7 @@ to feel like the real thing and worth screenshotting.
 ## Brand Personality
 
 Premium, trustworthy, and quietly hobbyist-warm. It should feel like a real
-grading service's product surface: authoritative and clean (PSA/CGC-grade
+grading service's product surface: authoritative and clean (PSA-grade
 credibility), with the calm restraint of a well-made dashboard, but elevated so
 the slab reads as a high-value collectible on a lit stage rather than a row in a
 table. Confident, not loud. The card is the hero; the UI is the gallery around

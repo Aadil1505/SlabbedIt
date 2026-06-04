@@ -151,41 +151,24 @@
 }
 
 .label {
-  --label-color: #cf1f2e;
-
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border: 0.62cqw solid var(--label-color);
-  border-radius: 0.72cqw;
-  overflow: visible;
-  background:
-    linear-gradient(90deg, rgb(238 245 255 / 70%), transparent 42% 62%, rgb(237 242 250 / 56%)),
-    #fff;
-  color: #17191d;
-  box-shadow:
-    0 0.28cqw 0.5cqw rgb(41 50 64 / 18%),
-    inset 0 0 0 0.13cqw rgb(255 255 255 / 75%);
-  text-transform: uppercase;
-}
-
-/* The image-backed flip uses the artwork's native ratio and a measured four-row
-   overlay grid. Keeping it out of transforms prevents soft, half-pixel text. */
-.labelImaged {
   position: relative;
   flex: none;
   width: 100%;
   height: auto;
   aspect-ratio: 1928 / 575;
+  overflow: visible;
   border: 0;
   background: none;
+  color: #17191d;
   box-shadow: none;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
   font-synthesis: none;
   text-rendering: geometricPrecision;
+  text-transform: uppercase;
   -webkit-font-smoothing: antialiased;
 }
 
-.labelImage {
+.labelArtwork {
   pointer-events: none;
   position: absolute;
   inset: 0;
@@ -198,62 +181,49 @@
 
 /* The printable white field begins around 3%/10% and ends around 97%/90%.
    Extra breathing room keeps the type optically centered inside the red trim. */
-.labelImaged .labelContent {
+.label .labelContent {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   column-gap: 5%;
   padding: 3.5cqw 4.8cqw 3.1cqw;
 }
 
-.labelImaged .identityBlock,
-.labelImaged .gradeBlock {
+.label .identityBlock,
+.label .gradeBlock {
   display: grid;
   grid-template-rows: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 0;
 }
 
-.labelImaged .gradeBlock {
+.label .gradeBlock {
   justify-items: end;
 }
 
-.labelImaged .identityText,
-.labelImaged .gradeText {
+.label .identityText,
+.label .gradeText {
   display: contents;
 }
 
-.labelImaged .identityText span,
-.labelImaged .gradeText span,
-.labelImaged .gradeBlock > span {
+.label .identityText span,
+.label .gradeText span,
+.label .gradeBlock > span {
   align-self: center;
   line-height: 1;
 }
 
-.labelImaged .identityText,
-.labelImaged .gradeBlock {
+.label .identityText,
+.label .gradeBlock {
   font-size: 3.65cqw;
   letter-spacing: -0.015em;
 }
 
-.labelImaged .barcode {
+.label .barcode {
   grid-row: 4;
   align-self: center;
   width: 24cqw;
   height: 3.75cqw;
   gap: 0.23cqw;
-}
-
-.labelSecurityPattern {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: inherit;
-  opacity: 0.4;
-  background:
-    radial-gradient(ellipse at 38% 42%, rgb(83 144 214 / 13%), transparent 45%),
-    repeating-linear-gradient(0deg, rgb(64 116 183 / 9%) 0 0.12cqw, transparent 0.12cqw 0.48cqw);
-  mix-blend-mode: multiply;
 }
 
 .labelContent {
@@ -326,35 +296,6 @@
 .barcode span {
   min-width: 0.13cqw;
   background: #17191d;
-}
-
-.labelBridge {
-  position: absolute;
-  z-index: 3;
-  bottom: -1.55cqw;
-  left: 50%;
-  display: flex;
-  width: 12.4cqw;
-  height: 5.05cqw;
-  transform: translateX(-50%);
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.32cqw;
-  background:
-    linear-gradient(112deg, transparent 0 13%, rgb(255 255 255 / 86%) 24%, transparent 37% 62%, rgb(174 223 255 / 60%) 74%, transparent 88%),
-    linear-gradient(135deg, #f0f2f6, #c8ced8 52%, #eef0f4);
-  box-shadow:
-    0 0 0 0.12cqw rgb(255 255 255 / 65%),
-    0 0.2cqw 0.42cqw rgb(42 51 65 / 25%);
-}
-
-.labelBridge img {
-  display: block !important;
-  width: auto !important;
-  height: 3.55cqw !important;
-  max-width: 10.4cqw;
-  object-fit: contain;
-  user-select: none;
 }
 
 .cardTray {

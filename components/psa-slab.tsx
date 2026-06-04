@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useTilt } from "@/lib/use-tilt";
 import { useInsideBumper } from "@/lib/bumper-context";
@@ -52,36 +51,15 @@ export type LabelData = {
 type PSASlabProps = {
   src?: string;
   alt?: string;
-  logo?: ReactNode;
-  labelColor?: string;
   label: LabelData;
-  /**
-   * Optional flip artwork. When set, the label chrome (red border, security
-   * watermark, PSA mark) comes from this image and only the editable text is
-   * overlaid on top — the shibadev "tag template" technique. When omitted, the
-   * label is drawn entirely in CSS.
-   * NOTE: the bundled /psa-label-template.png is a temporary prototype asset and
-   * must be replaced with our own artwork before shipping.
-   */
-  labelImage?: string;
   interactive?: boolean;
   className?: string;
 };
 
-function DefaultMark() {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src="/psa.png" alt="PSA" draggable={false} />
-  );
-}
-
 export function PSASlab({
   src,
   alt = "Graded trading card",
-  logo = <DefaultMark />,
-  labelColor = "#cf1f2e",
   label,
-  labelImage,
   interactive = true,
   className,
 }: PSASlabProps) {
@@ -115,12 +93,7 @@ export function PSASlab({
 
         {/* The flip sits in a shallow, separately molded header pocket. */}
         <div className={styles.labelPocket}>
-          <AccurateLabel
-            label={label}
-            labelColor={labelColor}
-            logo={logo}
-            labelImage={labelImage}
-          />
+          <AccurateLabel label={label} />
         </div>
 
         {/* One lower cavity wall and four interrupted card-retention ledges. */}
@@ -158,46 +131,20 @@ export function PSASlab({
   );
 }
 
-function AccurateLabel({
-  label,
-  labelColor,
-  logo,
-  labelImage,
-}: {
-  label: LabelData;
-  labelColor: string;
-  logo: ReactNode;
-  labelImage?: string;
-}) {
+function AccurateLabel({ label }: { label: LabelData }) {
   const line1 = [label.year, "POKEMON"].filter(Boolean).join(" ");
-  const imageBacked = Boolean(labelImage);
 
   return (
-    <div
-      style={
-        {
-          "--label-color": labelColor,
-          fontFamily: imageBacked
-            ? "var(--font-geist-sans), Arial, sans-serif"
-            : "var(--font-univers), var(--font-condensed), sans-serif",
-        } as CSSProperties
-      }
-      className={cn(styles.label, imageBacked && styles.labelImaged)}
-    >
-      {imageBacked ? (
-        // The flip artwork supplies the border, watermark and PSA mark; only the
-        // editable text below is overlaid on top of it.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={labelImage}
-          alt=""
-          aria-hidden
-          draggable={false}
-          className={styles.labelImage}
-        />
-      ) : (
-        <div className={styles.labelSecurityPattern} />
-      )}
+    <div className={styles.label}>
+      {/* The PSA flip artwork supplies the border, watermark, and center mark. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/psa-label-template.png"
+        alt=""
+        aria-hidden
+        draggable={false}
+        className={styles.labelArtwork}
+      />
 
       <div className={styles.labelContent}>
         <div className={styles.identityBlock}>
@@ -218,9 +165,6 @@ function AccurateLabel({
           <span>{label.cert}</span>
         </div>
       </div>
-
-      {/* CSS mark only — when image-backed, the PSA mark is baked into the art. */}
-      {imageBacked ? null : <span className={styles.labelBridge}>{logo}</span>}
     </div>
   );
 }

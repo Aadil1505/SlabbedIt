@@ -29,6 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
@@ -38,53 +39,6 @@ const SAMPLE_CARD = "https://assets.tcgdex.net/en/swsh/swsh4.5/SV107/high.png";
 
 type Thickness = "slim" | "standard" | "chunky";
 type Finish = "matte" | "gloss";
-type GraderId = "psa" | "bgs" | "cgc" | "sgc";
-
-// Each grading company sets its house color (drives the label border) and its
-// official mark on the label, shipped as a trimmed, equal-height transparent PNG
-// in /public so the lockups read consistently across companies. `GraderLogo`
-// stays as a text fallback if a `logoSrc` is ever missing.
-const GRADERS: {
-  id: GraderId;
-  name: string;
-  full: string;
-  color: string;
-  logoSrc?: string;
-  // Optional flip artwork — when set, the label chrome is image-backed and only
-  // the text is overlaid (PSASlab.labelImage). Prototype asset; replace before
-  // shipping.
-  labelImageSrc?: string;
-}[] = [
-  {
-    id: "psa",
-    name: "PSA",
-    full: "Professional Sports Authenticator",
-    color: "#cf1f2e",
-    logoSrc: "/psa.png",
-    labelImageSrc: "/psa-label-template.png",
-  },
-  {
-    id: "bgs",
-    name: "BGS",
-    full: "Beckett Grading Services",
-    color: "#9c7a1e",
-    logoSrc: "/bgs.png",
-  },
-  {
-    id: "cgc",
-    name: "CGC",
-    full: "Certified Guaranty Company",
-    color: "#ce0e2d",
-    logoSrc: "/cgc.png",
-  },
-  {
-    id: "sgc",
-    name: "SGC",
-    full: "Sportscard Guaranty",
-    color: "#1b1b1b",
-    logoSrc: "/sgc.png",
-  },
-];
 
 // Widen the `as const` preset map so optional `translucent` is visible.
 const PRESETS: Record<BumperColorName, { color: string; translucent?: boolean }> =
@@ -126,7 +80,6 @@ export function SlabStudio() {
   const urlId = `${ids}-url`;
 
   const [cardSrc, setCardSrc] = useState(SAMPLE_CARD);
-  const [grader, setGrader] = useState<GraderId>("psa");
 
   // The printed grade label. Defaults describe the sample card so it reads
   // right immediately. Grade is always user-set (the catalog has none) —
@@ -194,9 +147,9 @@ export function SlabStudio() {
   // swatch keeps previewing it and reopening the picker resumes from it.
   const [customColor, setCustomColor] = useState("#7c4dff");
   const [thickness, setThickness] = useState<Thickness>("standard");
+  const [bumperRadius, setBumperRadius] = useState(7.2);
   const [finish, setFinish] = useState<Finish>("matte");
   const [translucent, setTranslucent] = useState(false);
-  const [screws, setScrews] = useState(false);
   const [interactive, setInteractive] = useState(true);
 
   // The element captured on export. It wraps the slab assembly and, crucially,
@@ -227,8 +180,6 @@ export function SlabStudio() {
     [],
   );
 
-  const activeGrader = GRADERS.find((g) => g.id === grader) ?? GRADERS[0];
-
   // Capture on a solid theme background (not the page's glows) so the light
   // acrylic pops and the dropped backdrop-filter blur is invisible — blurring a
   // flat color yields the same flat color. 3× scale keeps it crisp.
@@ -247,7 +198,7 @@ export function SlabStudio() {
       const dataUrl = await domToPng(node, captureOptions());
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = `guardedview-${activeGrader.id}-slab.png`;
+      a.download = "guardedview-psa-slab.png";
       a.click();
     } finally {
       setBusy(null);
@@ -272,25 +223,10 @@ export function SlabStudio() {
       setBusy(null);
     }
   }
-  const logo = activeGrader.logoSrc ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={activeGrader.logoSrc}
-      alt={activeGrader.name}
-      draggable={false}
-      className="h-[9cqw] w-auto select-none object-contain"
-    />
-  ) : (
-    <GraderLogo grader={activeGrader} />
-  );
-
   const slab = (
     <PSASlab
       src={cardSrc}
-      logo={logo}
-      labelColor={activeGrader.color}
       label={label}
-      labelImage={activeGrader.labelImageSrc}
       interactive={interactive}
     />
   );
@@ -303,15 +239,15 @@ export function SlabStudio() {
             so it isn't clipped out of the export. */}
         <div
           ref={stageRef}
-          className="w-full max-w-[min(82vw,360px)] px-4 pt-3 pb-9 lg:max-w-[388px]"
+          className="w-full max-w-[min(calc(82vw+64px),424px)] px-12 pt-12 pb-16 lg:max-w-[452px]"
         >
           {showBumper ? (
             <SlabBumper
               color={color}
               thickness={thickness}
+              radius={bumperRadius}
               finish={finish}
               translucent={translucent}
-              screws={screws}
               interactive={interactive}
             >
               {slab}
@@ -343,14 +279,6 @@ export function SlabStudio() {
               >
                 Reset to sample card
               </button>
-            </Row>
-            <Row>
-              <Label>Grading company</Label>
-              <Segmented
-                options={GRADERS.map((g) => ({ value: g.id, label: g.name }))}
-                value={grader}
-                onChange={setGrader}
-              />
             </Row>
           </Section>
 
@@ -533,6 +461,24 @@ export function SlabStudio() {
               </Row>
 
               <Row>
+                <div className="flex items-center justify-between gap-3">
+                  <Label id={`${ids}-radius-label`}>Corner radius</Label>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {bumperRadius.toFixed(1)}
+                  </span>
+                </div>
+                <Slider
+                  min={3}
+                  max={12}
+                  step={0.1}
+                  value={[bumperRadius]}
+                  onValueChange={([value]) => setBumperRadius(value)}
+                  disabled={!showBumper}
+                  aria-labelledby={`${ids}-radius-label`}
+                />
+              </Row>
+
+              <Row>
                 <Label>Finish</Label>
                 <Segmented
                   options={FINISH_OPTS}
@@ -547,12 +493,6 @@ export function SlabStudio() {
                 label="Translucent"
                 checked={translucent}
                 onChange={setTranslucent}
-              />
-              <SwitchRow
-                id={`${ids}-screws`}
-                label="Corner screws"
-                checked={screws}
-                onChange={setScrews}
               />
             </fieldset>
           </Section>
@@ -595,31 +535,6 @@ export function SlabStudio() {
         </div>
       </aside>
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ logo */
-
-// One consistent lockup for every company: a bold acronym over a tracked,
-// uppercase full name, both in the house color, optically centered. Sized in
-// `cqw` so it scales with the slab. Swap in an official mark via `logoSrc`.
-function GraderLogo({
-  grader,
-}: {
-  grader: { name: string; full: string; color: string };
-}) {
-  return (
-    <span
-      style={{ color: grader.color }}
-      className="flex select-none flex-col items-center leading-none"
-    >
-      <span className="font-sans text-[7.5cqw] font-black tracking-[-0.02em]">
-        {grader.name}
-      </span>
-      <span className="mt-[1.3cqw] font-sans text-[1.7cqw] font-semibold tracking-[0.2em] uppercase">
-        {grader.full}
-      </span>
-    </span>
   );
 }
 
