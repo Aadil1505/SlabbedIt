@@ -126,7 +126,7 @@ function SearchBody({
   return (
     <div
       className={cn(
-        "grid max-h-72 grid-cols-3 gap-2 overflow-y-auto rounded-md border border-border bg-background/40 p-2",
+        "grid max-h-72 auto-rows-max grid-cols-3 content-start gap-2 overflow-y-auto rounded-md border border-border bg-background/40 p-2",
         status === "loading" && "opacity-60",
       )}
     >
@@ -152,9 +152,9 @@ function SearchBody({
           >
             {/* Plain <img> on purpose: next/image would route these through
                 Vercel's Image Optimization and meter against the plan.
-                Width/height attributes give the intrinsic ratio so the cell
-                reserves correct height on every browser (CSS aspect-ratio on a
-                replaced element breaks inside this capped grid on iOS Safari). */}
+                Width/height attributes give the intrinsic ratio, while the
+                grid's max-content rows keep iOS Safari from shrinking and
+                clipping the cells inside the capped results area. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={thumb}
