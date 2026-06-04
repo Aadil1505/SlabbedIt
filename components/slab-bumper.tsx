@@ -38,7 +38,6 @@ type BumperPreset = { color: string; translucent?: boolean };
 
 export const BUMPER_PRESETS = {
   black: { color: "#1c2026" },
-  graphite: { color: "#39404c" },
   white: { color: "#e8ebf0" },
   red: { color: "#dd3a2a" },
   blue: { color: "#2f6df0" },
