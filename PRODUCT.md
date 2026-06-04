@@ -15,7 +15,7 @@ collectors. They are hobbyists, not professionals: comfortable with card lingo
 
 ## Product Purpose
 
-GuardedView is a previewer: drop in a card image, choose a grade and label
+SlabbedIt is a previewer: drop in a card image, choose a grade and label
 details, and get a photorealistic graded-slab render you can admire and share.
 The technical bet is that the entire slab (acrylic case, bevel, gloss, floor
 shadow, protective bumpers, glitter, printed label) is built in pure CSS/DOM,

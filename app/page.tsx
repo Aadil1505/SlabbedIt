@@ -34,7 +34,7 @@ export default function Home() {
       <header className="relative z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4">
         <div className="flex items-baseline gap-3">
           <span className="font-heading text-lg tracking-tight text-foreground">
-            GuardedView
+            SlabbedIt
           </span>
           <span className="hidden font-sans text-sm text-muted-foreground sm:inline">
             Slab previewer

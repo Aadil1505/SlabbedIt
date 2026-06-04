@@ -7,7 +7,7 @@ import { domToBlob, domToPng } from "modern-screenshot";
 import { type CardResumeModel } from "@tcgdex/sdk";
 import { tcgdex } from "@/lib/tcgdex";
 import { CardSearch } from "@/components/card-search";
-import { PSASlab, type LabelData } from "@/components/psa-slab";
+import { PSASlab, SAMPLE_CARD_SRC, type LabelData } from "@/components/psa-slab";
 import { Button } from "@/components/ui/button";
 import {
   ColorPicker,
@@ -32,10 +32,6 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-
-// Shining Fates Charizard VMAX (SV107) from TCGdex's high-res assets.
-// If the URL ever 404s, PSASlab falls back to a holo placeholder.
-const SAMPLE_CARD = "https://assets.tcgdex.net/en/swsh/swsh4.5/SV107/high.png";
 
 type Thickness = "slim" | "standard" | "chunky";
 type Finish = "matte" | "gloss";
@@ -79,7 +75,7 @@ export function SlabStudio() {
   const ids = useId();
   const urlId = `${ids}-url`;
 
-  const [cardSrc, setCardSrc] = useState(SAMPLE_CARD);
+  const [cardSrc, setCardSrc] = useState(SAMPLE_CARD_SRC);
 
   // The printed grade label. Defaults describe the sample card so it reads
   // right immediately. Grade is always user-set (the catalog has none) —
@@ -198,7 +194,7 @@ export function SlabStudio() {
       const dataUrl = await domToPng(node, captureOptions());
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = "guardedview-psa-slab.png";
+      a.download = "slabbedit-psa-slab.png";
       a.click();
     } finally {
       setBusy(null);
@@ -274,7 +270,7 @@ export function SlabStudio() {
               />
               <button
                 type="button"
-                onClick={() => setCardSrc(SAMPLE_CARD)}
+                onClick={() => setCardSrc(SAMPLE_CARD_SRC)}
                 className="self-start text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
               >
                 Reset to sample card
