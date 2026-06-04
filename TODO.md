@@ -13,18 +13,11 @@ Tracked work that's intentionally deferred. Roughly priority-ordered.
       `background_color`; the app is dark-default, so the installed-PWA splash flashes
       white. Match the dark stage (≈ `#1a2030`).
 
-## Export realism (works, but not physically accurate)
+## Export options
 
-- [ ] **Slab translucency.** The export bakes an opaque light base into the slab body
-      (foreignObject capture can't render `backdrop-filter`), so the "clear acrylic"
-      areas aren't see-through — a dark background doesn't show through like real
-      plastic. Preferred fix: keep the card area opaque, make only the outer bevel/
-      edges genuinely translucent, and tone down the bumper's inner-rim tint so it
-      doesn't wash the interior. See `components/psa-slab.tsx` (`EXPORT_SLAB_BG`).
-- [ ] **Translucent bumper glow.** Translucent presets (clear/smoke/glow) lose their
-      `backdrop-blur` halo on export; currently substituted with a flat frosted fill.
-- [ ] **Pure cutout option.** Optionally exclude the slab's floor/drop shadow from the
-      export for a clean no-shadow cutout.
+- [ ] **Pure cutout option.** The default export includes the stage because the
+      translucent slab materials depend on it for their exact studio appearance.
+      Optionally offer a separate opaque-material, transparent-background cutout.
 
 ## Product scope
 

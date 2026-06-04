@@ -19,9 +19,9 @@ no canvas or WebGL, so it stays razor-sharp at any size and renders instantly.
 
 - 🃏 **Bring your own card** — search the [TCGdex](https://tcgdex.dev) catalog or upload a photo of your own (read locally, never uploaded).
 - 🏷️ **Editable grade label** — PSA-style grade scale, card name, set, year, number, and cert; auto-filled from the catalog and fully editable.
-- 🛡️ **Configurable bumper** — color presets or a custom picker, thickness, corner radius, matte/gloss finish, and translucent "frosted" materials with embedded glitter.
+- 🛡️ **Configurable bumper** — color presets or a custom picker, thickness, corner radius, matte/gloss finish, and translucent "frosted" materials.
 - ✨ **Live material realism** — cursor-driven tilt, gloss tracking, and directional acrylic reflections.
-- 🖼️ **One-click export** — download or copy a clean, transparent-background PNG of just the slab, at 3× resolution.
+- 🖼️ **One-click export** — download or copy a 4× PNG that matches the studio view, including its material lighting and stage.
 - 🌗 **Light & dark themes** — a warm-paper light mode and a dark "gallery stage" (the default).
 
 ## Tech stack
@@ -48,9 +48,15 @@ Open [http://localhost:3000](http://localhost:3000).
 | Script        | Description                  |
 | ------------- | ---------------------------- |
 | `bun dev`     | Start the dev server         |
+| `bun run dev:https` | Start the dev server with a locally trusted HTTPS certificate |
 | `bun run build` | Production build           |
 | `bun start`   | Serve the production build   |
 | `bun run lint`  | Lint with ESLint           |
+
+Image clipboard writes require a secure browser context. They work on a deployed
+HTTPS site and on trusted local HTTPS. For testing from a physical phone, the
+development certificate authority must also be trusted by that device. On an
+insecure LAN `http://` address, **Copy** downloads the same PNG instead.
 
 ## How it works
 
@@ -58,9 +64,9 @@ The slab is a representational CSS model. Every dimension is expressed in
 container-query units (`cqw`) relative to the slab's width, so the whole case scales
 as one piece from a thumbnail to a full-screen hero. The case reads as clear plastic
 from layered hard edges, rails, and directional reflections rather than an opaque
-fill. Export composites the live DOM to a transparent PNG via `modern-screenshot`,
-with a few capture-time adjustments to work around effects the rasterizer can't
-reproduce (notably `backdrop-filter`).
+fill. Export composites the same stage DOM to a high-resolution PNG via
+`modern-screenshot`. The captured stage owns its background and uses export-safe
+material layers, so the live preview and PNG keep the same contrast and color.
 
 ```
 app/                Next.js App Router (layout, page, metadata routes, icons)
@@ -78,7 +84,7 @@ lib/                tcgdex client, cursor tilt, helpers
 ## Roadmap
 
 See [`TODO.md`](./TODO.md) for deferred work (reduced-motion fallback, analytics,
-export translucency realism, and product-scope decisions).
+optional cutout export, and product-scope decisions).
 
 ## Disclaimer
 

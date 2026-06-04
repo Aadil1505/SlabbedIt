@@ -3,17 +3,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Color from "color";
 import { ArrowUp, Check, Copy, Download, Pencil, Upload } from "lucide-react";
-import { domToBlob, domToPng } from "modern-screenshot";
+import { domToBlob } from "modern-screenshot";
 import { type CardResumeModel } from "@tcgdex/sdk";
 import { tcgdex } from "@/lib/tcgdex";
 import { CardSearch } from "@/components/card-search";
-import {
-  EXPORT_SLAB_BG,
-  PSASlab,
-  SAMPLE_CARD_SRC,
-  SLAB_BODY_ATTR,
-  type LabelData,
-} from "@/components/psa-slab";
+import { PSASlab, SAMPLE_CARD_SRC, type LabelData } from "@/components/psa-slab";
 import { Button } from "@/components/ui/button";
 import {
   ColorPicker,
@@ -23,7 +17,6 @@ import {
   ColorPickerSelection,
 } from "@/components/ui/color-picker";
 import {
-  BUMPER_FACE_ATTR,
   BUMPER_PRESETS,
   SlabBumper,
   type BumperColorName,
@@ -42,6 +35,14 @@ import { cn } from "@/lib/utils";
 
 type Thickness = "slim" | "standard" | "chunky";
 type Finish = "matte" | "gloss";
+type CopyFeedback = null | "Copied" | "Shared" | "Saved";
+type ExportNotice = null | {
+  tone: "error" | "info";
+  message: string;
+};
+
+const EXPORT_FILENAME = "slabbedit-psa-slab.png";
+const EXPORT_SCALE = 4;
 
 // Widen the `as const` preset map so optional `translucent` is visible.
 const PRESETS: Record<BumperColorName, { color: string; translucent?: boolean }> =
@@ -192,8 +193,8 @@ export function SlabStudio() {
   // resolves when modern-screenshot clones the node into an SVG foreignObject.
   const stageRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<null | "download" | "copy">(null);
-  const [copied, setCopied] = useState(false);
-  const [exportError, setExportError] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
+  const [exportNotice, setExportNotice] = useState<ExportNotice>(null);
 
   // Selecting a preset adopts its native material, so the clear/smoke/glow
   // presets read see-through immediately. The toggle can still override after.
@@ -216,57 +217,98 @@ export function SlabStudio() {
     [],
   );
 
-  // Export just the subject on a transparent canvas — no painted background, so
-  // the slab (and bumper, when shown) drops cleanly onto anything. 3× scale
-  // keeps it crisp.
-  //
-  // The fixes below run on the *clone only* (onCloneNode, after computed styles
-  // are inlined, so the inline override wins) — the live DOM is never touched,
-  // no flicker. Both exist because modern-screenshot rasterizes via an SVG
-  // foreignObject, where the browser ignores `backdrop-filter`:
-  //   · slab body: leans on backdrop-filter to read as near-white acrylic, so
-  //     we lay an opaque base under the same gradients (else the bumper bleeds
-  //     through the translucent fill).
-  //   · translucent bumper face: leans on backdrop-blur over the page; with no
-  //     backdrop to blur it would export as a faint wash, so we swap in an
-  //     opaque frosted fill of the bumper color.
+  // The capture target paints the same local stage shown behind the live slab,
+  // so the PNG keeps the exact material contrast instead of flattening a
+  // translucent slab onto a transparent canvas. 4× gives mobile exports enough
+  // resolution for the label, rails, and shadows to stay crisp.
   function captureOptions() {
-    const resolvedBumper = isCustomActive
-      ? color
-      : PRESETS[color as BumperColorName].color;
     return {
-      backgroundColor: null,
-      scale: 3,
-      onCloneNode(cloned: Node) {
-        if (!(cloned instanceof Element)) return;
-        const body = cloned.querySelector<HTMLElement>(`[${SLAB_BODY_ATTR}]`);
-        body?.style.setProperty("background", EXPORT_SLAB_BG, "important");
-
-        if (showBumper && translucent) {
-          const frosted = Color(resolvedBumper).mix(Color("white"), 0.28).hex();
-          cloned
-            .querySelectorAll<HTMLElement>(`[${BUMPER_FACE_ATTR}="translucent"]`)
-            .forEach((face) =>
-              face.style.setProperty("background", frosted, "important"),
-            );
-        }
-      },
+      backgroundColor: getComputedStyle(document.body).backgroundColor,
+      scale: EXPORT_SCALE,
     };
+  }
+
+  async function createExportBlob(node: HTMLElement) {
+    await Promise.all([
+      document.fonts.ready,
+      ...Array.from(node.querySelectorAll("img"), (img) =>
+        img.decode().catch(() => undefined),
+      ),
+    ]);
+    return domToBlob(node, captureOptions());
+  }
+
+  function downloadBlob(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = EXPORT_FILENAME;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function showCopyFeedback(feedback: Exclude<CopyFeedback, null>) {
+    setCopyFeedback(feedback);
+    setTimeout(() => setCopyFeedback(null), 2000);
+  }
+
+  function canCopyPng() {
+    if (
+      !isSecureContext ||
+      typeof ClipboardItem === "undefined" ||
+      typeof navigator.clipboard?.write !== "function"
+    ) {
+      return false;
+    }
+    return (
+      typeof ClipboardItem.supports !== "function" ||
+      ClipboardItem.supports("image/png")
+    );
+  }
+
+  async function shareOrDownload(blob: Blob) {
+    const file = new File([blob], EXPORT_FILENAME, { type: "image/png" });
+    const canShareFile =
+      typeof navigator.share === "function" &&
+      (typeof navigator.canShare !== "function" ||
+        navigator.canShare({ files: [file] }));
+
+    if (canShareFile) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "SlabbedIt slab",
+        });
+        showCopyFeedback("Shared");
+        setExportNotice(null);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+
+    downloadBlob(blob);
+    showCopyFeedback("Saved");
+    setExportNotice({
+      tone: "info",
+      message: isSecureContext
+        ? "Image copy isn’t supported by this browser, so the PNG was downloaded instead."
+        : "Image copy requires HTTPS. The same PNG was downloaded instead.",
+    });
   }
 
   async function handleDownload() {
     const node = stageRef.current;
     if (!node || busy) return;
-    setExportError(false);
+    setExportNotice(null);
     setBusy("download");
     try {
-      const dataUrl = await domToPng(node, captureOptions());
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "slabbedit-psa-slab.png";
-      a.click();
+      downloadBlob(await createExportBlob(node));
     } catch {
-      setExportError(true);
+      setExportNotice({
+        tone: "error",
+        message: "Couldn’t create the PNG. Wait for the card image to load and retry.",
+      });
     } finally {
       setBusy(null);
     }
@@ -275,19 +317,31 @@ export function SlabStudio() {
   async function handleCopy() {
     const node = stageRef.current;
     if (!node || busy) return;
-    setExportError(false);
+    setExportNotice(null);
     setBusy("copy");
+    const blobPromise = createExportBlob(node);
     try {
-      // Hand the blob *Promise* to ClipboardItem so the write stays inside the
-      // user gesture — Safari rejects a clipboard write done after an await.
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": domToBlob(node, captureOptions()) }),
-      ]);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (canCopyPng()) {
+        try {
+          // Safari requires write() during the user gesture, so pass the
+          // still-running capture Promise directly to ClipboardItem.
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blobPromise }),
+          ]);
+          showCopyFeedback("Copied");
+          return;
+        } catch {
+          // Some mobile browsers expose the API but reject image writes. Fall
+          // through to the native share sheet or a download.
+        }
+      }
+
+      await shareOrDownload(await blobPromise);
     } catch {
-      // Clipboard image write unsupported (older browser) — Download still works.
-      setExportError(true);
+      setExportNotice({
+        tone: "error",
+        message: "Couldn’t create the PNG. Wait for the card image to load and retry.",
+      });
     } finally {
       setBusy(null);
     }
@@ -298,14 +352,20 @@ export function SlabStudio() {
 
   return (
     <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Stage — the gallery floor. Transparent so the page backdrop shows. */}
-      <section className="flex min-h-[60vh] flex-1 items-center justify-center px-6 py-12 lg:min-h-0 lg:overflow-auto lg:py-16">
+      {/* Stage — the gallery floor. The local backdrop is part of the capture
+          target, so the exported slab keeps the same material contrast. */}
+      <section className="flex min-h-[60vh] flex-1 items-center justify-center bg-background px-6 py-12 lg:min-h-0 lg:overflow-auto lg:py-16">
         {/* Capture target. Padding gives the negative-offset floor shadow room
             so it isn't clipped out of the export. */}
         <div
           ref={stageRef}
-          className="w-full max-w-[min(calc(82vw+64px),424px)] px-12 pt-12 pb-16 lg:max-w-[452px]"
+          data-export-stage
+          className="relative isolate w-full max-w-[min(calc(82vw+64px),424px)] px-12 pt-12 pb-16 lg:max-w-[452px]"
         >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10 bg-background bg-[radial-gradient(68%_66%_at_50%_48%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_72%),radial-gradient(44%_42%_at_62%_70%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent_78%)]"
+          />
           {showBumper ? (
             <SlabBumper
               color={color}
@@ -615,7 +675,7 @@ export function SlabStudio() {
 
           <Section title="Export">
             <p className="text-xs text-muted-foreground">
-              Save a clean image of your slab to share.
+              Save the studio view as a high-resolution PNG.
             </p>
             <div className="flex gap-2">
               <Button
@@ -634,14 +694,21 @@ export function SlabStudio() {
                 disabled={busy !== null}
                 className="flex-1"
               >
-                {copied ? <Check /> : <Copy />}
-                {copied ? "Copied" : busy === "copy" ? "Copying…" : "Copy"}
+                {copyFeedback ? <Check /> : <Copy />}
+                {copyFeedback ?? (busy === "copy" ? "Copying…" : "Copy")}
               </Button>
             </div>
-            {exportError && (
-              <span className="text-xs text-destructive">
-                Couldn’t capture the slab. Try uploading the card image and
-                exporting again.
+            {exportNotice && (
+              <span
+                role={exportNotice.tone === "error" ? "alert" : "status"}
+                className={cn(
+                  "text-xs",
+                  exportNotice.tone === "error"
+                    ? "text-destructive"
+                    : "text-muted-foreground",
+                )}
+              >
+                {exportNotice.message}
               </span>
             )}
           </Section>

@@ -58,21 +58,6 @@ type PSASlabProps = {
   className?: string;
 };
 
-// Marks the slab body so an exporter can find it in a cloned DOM. The live body
-// is semi-transparent and leans on `backdrop-filter` to read as near-white
-// acrylic, but foreignObject-based capture (modern-screenshot, html-to-image,
-// dom-to-image — all the same technique) can't render backdrop-filter, so the
-// background bleeds through. The studio swaps in EXPORT_SLAB_BG on the clone.
-export const SLAB_BODY_ATTR = "data-slab-body";
-
-// The slab body's two translucent gradients (matching the `background` below),
-// composited over an opaque light base. Used by the export clone hook so the
-// body stays neutral with no live-DOM change and no on-screen flicker.
-export const EXPORT_SLAB_BG =
-  "linear-gradient(104deg,rgb(255 255 255/32%),transparent 15% 82%,rgb(185 198 216/22%))," +
-  "linear-gradient(164deg,rgb(250 252 255/62%),rgb(224 232 241/46%) 48%,rgb(198 209 223/50%))," +
-  "rgb(236 240 246)";
-
 export function PSASlab({
   src,
   alt = "Graded trading card",
@@ -93,15 +78,12 @@ export function PSASlab({
       <div
         ref={ref}
         {...handlers}
-        {...{ [SLAB_BODY_ATTR]: "" }}
         className={cn(
           "relative isolate aspect-[100/162.7] w-full overflow-hidden rounded-[3.5cqw]",
           "[background:linear-gradient(104deg,rgb(255_255_255/32%),transparent_15%_82%,rgb(185_198_216/22%)),linear-gradient(164deg,rgb(250_252_255/62%),rgb(224_232_241/46%)_48%,rgb(198_209_223/50%))]",
           "shadow-[0_1.8cqw_4.8cqw_rgb(8_12_20/42%),0_0.35cqw_0.9cqw_rgb(8_12_20/28%),inset_0_0_0_0.18cqw_rgb(255_255_255/86%),inset_0.55cqw_0.7cqw_0.9cqw_-0.45cqw_rgb(255_255_255/92%),inset_-0.7cqw_-0.9cqw_1.15cqw_-0.55cqw_rgb(80_96_118/38%)]",
-          "[backdrop-filter:blur(0.18cqw)_brightness(1.18)_saturate(0.75)]",
           selfTilt &&
             "will-change-transform transform-[perspective(1400px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] [transition:transform_500ms_ease-out] motion-reduce:transform-none motion-reduce:[transition:none]",
-          "animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none",
         )}
       >
         {/* The clear molded shell and its continuous sonic-weld perimeter. */}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useTilt } from "@/lib/use-tilt";
 import { BumperContext } from "@/lib/bumper-context";
@@ -18,21 +18,6 @@ import { BumperContext } from "@/lib/bumper-context";
  * wrapped slab reads the inherited --mx/--my for its gloss but doesn't tilt
  * itself (see BumperContext).
  */
-
-// Embedded-glitter texture for translucent bodies: fractal-noise speckles
-// thresholded down to sparse bright flecks (the feColorMatrix alpha row
-// multiplies the noise hard and biases negative, so only the peaks survive).
-// Tiled and screen-blended over the frosted fill, it reads as glitter
-// suspended in clear plastic.
-const SPARKLE_SVG = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><filter id="s"><feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 17 -10.5"/></filter><rect width="140" height="140" filter="url(#s)"/></svg>`,
-);
-const SPARKLE_URI = `url("data:image/svg+xml,${SPARKLE_SVG}")`;
-
-// Marks the colored bumper face so an exporter can find it in a cloned DOM.
-// The translucent face uses `backdrop-blur`, which foreignObject-based capture
-// can't render — so the studio swaps in an opaque frosted fill on the clone.
-export const BUMPER_FACE_ATTR = "data-bumper-face";
 
 type BumperPreset = { color: string; translucent?: boolean };
 
@@ -63,13 +48,6 @@ const THICKNESS = {
 } as const;
 
 type BumperThickness = keyof typeof THICKNESS;
-
-// Gradient-border mask: fills only the padding ring, punching out the content
-// box. Turns a full panel into a frame with a transparent center.
-// Longhands only — the `mask` shorthand resets mask-composite back to `add`,
-// which silently defeats the exclude (the hole never gets punched).
-const RING_MASK =
-  "[mask-image:linear-gradient(#000_0_0),linear-gradient(#000_0_0)] [mask-clip:content-box,border-box] [mask-composite:exclude] [-webkit-mask-image:linear-gradient(#000_0_0),linear-gradient(#000_0_0)] [-webkit-mask-clip:content-box,border-box] [-webkit-mask-composite:xor]";
 
 type SlabBumperProps = {
   /** Wrapped content — typically a <PSASlab />. */
@@ -104,16 +82,12 @@ export function SlabBumper({
     | undefined;
   const base = preset?.color ?? color;
   const isClear = translucent ?? preset?.translucent ?? false;
+  const id = useId().replaceAll(":", "");
+  const faceGradientId = `bumper-face-${id}`;
+  const glossGradientId = `bumper-gloss-${id}`;
 
   const { ref, handlers } = useTilt<HTMLDivElement>(interactive);
   const { pad } = THICKNESS[thickness];
-
-  // Body face: the molded material, masked to a RING so it only exists around
-  // the slab's edge — nothing sits behind the slab, so the slab's own acrylic
-  // is untouched. Translucent swaps the gradient for a frosted see-through fill.
-  const face = isClear
-    ? "bg-[color-mix(in_srgb,var(--bumper)_46%,transparent)] backdrop-blur-[1.6cqw] backdrop-saturate-[1.2]"
-    : "bg-[linear-gradient(160deg,color-mix(in_srgb,var(--bumper),white_22%),var(--bumper)_44%,color-mix(in_srgb,var(--bumper),black_30%))]";
 
   return (
     <BumperContext.Provider value={true}>
@@ -130,9 +104,8 @@ export function SlabBumper({
         {/* Floor shadow for the whole assembly */}
         <div className="pointer-events-none absolute inset-x-[8%] bottom-[-3cqw] h-[10cqw] blur-[2cqw] bg-[radial-gradient(ellipse_at_center,rgba(8,11,18,0.55)_0%,rgba(8,11,18,0.28)_45%,transparent_72%)]" />
 
-        {/* Bumper body — carries the tilt transform + outer drop shadow only;
-            the colored face/backdrop lives on a separate layer so the
-            backdrop-filter isn't on the transformed element. */}
+        {/* Bumper body — carries the tilt transform. The colored face is a
+            separate SVG ring so its center stays genuinely transparent. */}
         <div
           ref={ref}
           {...handlers}
@@ -140,35 +113,75 @@ export function SlabBumper({
             "relative isolate",
             interactive &&
               "transition-transform duration-500 ease-out will-change-transform transform-[perspective(1500px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))] motion-reduce:transition-none motion-reduce:transform-none",
-            "animate-in fade-in zoom-in-95 duration-700 motion-reduce:animate-none",
           )}
         >
-          {/* Colored acrylic/TPU face — masked to a ring (frame only); its own
-              padding sets the ring width, matching the body padding so the ring
-              meets the slab edge. The center is transparent (no fill behind the
-              slab). */}
-          <div
-            {...{ [BUMPER_FACE_ATTR]: isClear ? "translucent" : "solid" }}
-            className={cn(
-              "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] -z-10 rounded-[var(--bumper-radius)] p-[var(--bumper-pad)]",
-              "drop-shadow-[0_2cqw_5cqw_rgba(8,11,18,0.45)]",
-              RING_MASK,
-              face,
-            )}
-          />
-
-          {/* Embedded glitter (translucent bodies only) — a tiled sparkle
-              texture screen-blended onto the frosted frame, masked to the same
-              ring so it only sits in the plastic, not over the slab. */}
-          {isClear ? (
-            <div
-              style={{ backgroundImage: SPARKLE_URI, backgroundSize: "13cqw 13cqw" }}
-              className={cn(
-                "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] -z-10 rounded-[var(--bumper-radius)] p-[var(--bumper-pad)] bg-repeat opacity-70 mix-blend-screen",
-                RING_MASK,
-              )}
+          {/* A real stroked ring keeps the center physically empty. CSS mask
+              subtraction looks right live but is dropped by foreignObject
+              rasterizers, which made exported slabs inherit the bumper color. */}
+          <svg
+            aria-hidden
+            className="pointer-events-none absolute top-[calc(-1*var(--bumper-pad))] left-[calc(-1*var(--bumper-pad))] -z-10 size-[calc(100%+2*var(--bumper-pad))] overflow-visible drop-shadow-[0_2cqw_5cqw_rgba(8,11,18,0.45)]"
+          >
+            <defs>
+              <linearGradient
+                id={faceGradientId}
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop
+                  offset="0%"
+                  stopColor={`color-mix(in srgb, ${base}, white 22%)`}
+                  stopOpacity={isClear ? 0.68 : 1}
+                />
+                <stop
+                  offset="44%"
+                  stopColor={base}
+                  stopOpacity={isClear ? 0.46 : 1}
+                />
+                <stop
+                  offset="100%"
+                  stopColor={`color-mix(in srgb, ${base}, black 30%)`}
+                  stopOpacity={isClear ? 0.62 : 1}
+                />
+              </linearGradient>
+              <linearGradient
+                id={glossGradientId}
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stopColor="white" stopOpacity="0.48" />
+                <stop offset="30%" stopColor="white" stopOpacity="0" />
+                <stop offset="72%" stopColor="white" stopOpacity="0" />
+                <stop offset="100%" stopColor="white" stopOpacity="0.12" />
+              </linearGradient>
+            </defs>
+            <rect
+              x="calc(var(--bumper-pad) / 2)"
+              y="calc(var(--bumper-pad) / 2)"
+              width="calc(100% - var(--bumper-pad))"
+              height="calc(100% - var(--bumper-pad))"
+              rx="calc(var(--bumper-radius) - var(--bumper-pad) / 2)"
+              fill="none"
+              stroke={`url(#${faceGradientId})`}
+              strokeWidth="var(--bumper-pad)"
             />
-          ) : null}
+            {finish === "gloss" ? (
+              <rect
+                x="calc(var(--bumper-pad) / 2)"
+                y="calc(var(--bumper-pad) / 2)"
+                width="calc(100% - var(--bumper-pad))"
+                height="calc(100% - var(--bumper-pad))"
+                rx="calc(var(--bumper-radius) - var(--bumper-pad) / 2)"
+                fill="none"
+                stroke={`url(#${glossGradientId})`}
+                strokeWidth="var(--bumper-pad)"
+              />
+            ) : null}
+          </svg>
 
           {/* Slab cavity — the slab sits recessed inside the frame window */}
           <div className="relative">
@@ -188,16 +201,6 @@ export function SlabBumper({
                 frame wall catches the overhead light, just outside the slab. */}
             <div className="pointer-events-none absolute inset-[-0.5cqw] rounded-[3.2cqw] shadow-[inset_0_0.5cqw_0.35cqw_-0.3cqw_color-mix(in_srgb,var(--bumper),white_60%)]" />
           </div>
-
-          {/* Glossy surface sheen (gloss finish only) */}
-          {finish === "gloss" ? (
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-[calc(-1*var(--bumper-pad))] rounded-[var(--bumper-radius)] p-[var(--bumper-pad)] bg-[linear-gradient(150deg,rgba(255,255,255,0.4)_0%,transparent_28%,transparent_72%,rgba(255,255,255,0.1)_100%)]",
-                RING_MASK,
-              )}
-            />
-          ) : null}
 
         </div>
       </div>
