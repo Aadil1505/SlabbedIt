@@ -73,15 +73,6 @@ const CARD_FIT_OPTS: { value: CardFit; label: string }[] = [
   { value: "cover", label: "Fill tray" },
 ];
 
-// Optional stage backgrounds, mainly a way to eyeball the clear slab's
-// see-through. Token-based so they track the theme and export cleanly; the
-// separate "Image" button uploads a custom photo (kept local as a data URL).
-const STAGE_BG_PRESETS: { value: string; label: string }[] = [
-  { value: "none", label: "None" },
-  { value: "glow", label: "Glow" },
-  { value: "grid", label: "Grid" },
-];
-
 // PSA's printed grade scale. Whole grades 1–10 plus half points; PSA issues
 // halves 1.5–8.5 only (there is no 9.5; 9 jumps straight to 10). The half
 // label is the lower whole grade's abbreviation + "+", except 1.5 = FR (Fair).
@@ -286,10 +277,11 @@ export function SlabStudio() {
   const [translucent, setTranslucent] = useState(false);
   const [interactive, setInteractive] = useState(true);
 
-  // Optional background behind the slab, mainly to test the clear case's
-  // see-through: "none" | "glow" | "grid" | an uploaded image data URL. It
-  // lives inside the capture target, so whatever sits here also shows through
-  // the clear slab in the exported PNG. Uploads stay local (no CORS taint).
+  // Stage background: "none" (a neutral spotlight behind the slab) or an
+  // uploaded image data URL that fills the whole stage area — left edge to the
+  // control panel, navbar to footer — so the slab sits in a scene. Uploads stay
+  // local (no CORS taint). The full-stage image is a viewing backdrop only; the
+  // export captures just the slab box, so it isn't baked into the PNG.
   const [stageBg, setStageBg] = useState<string>("none");
   const bgFileInputRef = useRef<HTMLInputElement>(null);
   const bgIsImage = stageBg.startsWith("data:");
@@ -484,9 +476,16 @@ export function SlabStudio() {
 
   return (
     <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Stage — the gallery floor. The local backdrop is part of the capture
-          target, so the exported slab keeps the same material contrast. */}
-      <section className="flex min-h-[60vh] flex-1 items-center justify-center bg-background px-6 py-12 lg:min-h-0 lg:overflow-auto lg:py-16">
+      {/* Stage — the gallery floor. An uploaded image fills the whole stage as
+          a scene backdrop (the slab box stays transparent so it shows through);
+          "none" falls back to the neutral spotlight behind the slab only. */}
+      <section
+        className={cn(
+          "flex min-h-[60vh] flex-1 items-center justify-center bg-background px-6 py-12 lg:min-h-0 lg:overflow-hidden lg:py-16",
+          bgIsImage && "bg-cover bg-center bg-no-repeat",
+        )}
+        style={bgIsImage ? { backgroundImage: `url("${stageBg}")` } : undefined}
+      >
         {/* Capture target. Padding gives the negative-offset floor shadow room
             so it isn't clipped out of the export. */}
         <div
@@ -494,9 +493,9 @@ export function SlabStudio() {
           data-export-stage
           className="relative isolate w-full max-w-[min(calc(82vw+64px),424px)] px-12 pt-12 pb-16 lg:max-w-[452px]"
         >
-          {/* Stage backdrop behind the slab. Defaults to a neutral spotlight so
-              no brand light tints the clear polymer; can be switched to a glow,
-              a checker, or an uploaded image to test the case's see-through. */}
+          {/* Stage backdrop behind the slab — a neutral spotlight so no brand
+              light tints the clear polymer. When an image is uploaded it fills
+              the whole stage instead (see the section above) and this is null. */}
           <StageBackdrop bg={stageBg} />
           {showBumper ? (
             <SlabBumper
@@ -878,27 +877,21 @@ export function SlabStudio() {
 
             <Row>
               <Label>Background</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {STAGE_BG_PRESETS.map(({ value, label }) => {
-                  const active = stageBg === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setStageBg(value)}
-                      aria-pressed={active}
-                      className={cn(
-                        "rounded-md border py-1.5 font-heading text-xs transition-colors",
-                        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-foreground hover:bg-accent/40",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStageBg("none")}
+                  aria-pressed={!bgIsImage}
+                  className={cn(
+                    "rounded-md border py-1.5 font-heading text-xs transition-colors",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    !bgIsImage
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-foreground hover:bg-accent/40",
+                  )}
+                >
+                  None
+                </button>
                 <button
                   type="button"
                   onClick={() => bgFileInputRef.current?.click()}
@@ -926,8 +919,8 @@ export function SlabStudio() {
                 }}
               />
               <span className="text-xs text-muted-foreground">
-                Puts an image behind the slab to test the clear case’s
-                see-through. Included in the export.
+                Fills the whole stage with your image as a scene behind the
+                slab. Preview only — not included in the export.
               </span>
             </Row>
           </Section>
@@ -1022,32 +1015,17 @@ function Row({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-2">{children}</div>;
 }
 
-// The stage backdrop, sitting behind the slab inside the capture target.
+// The stage backdrop behind the slab, inside the capture target. An uploaded
+// image fills the whole stage at the section level instead, so the box stays
+// transparent and the scene shows through the clear slab — only "none" paints
+// here, as a neutral spotlight that travels into the export.
 function StageBackdrop({ bg }: { bg: string }) {
-  if (bg.startsWith("data:")) {
-    return (
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-background bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url("${bg}")` }}
-      />
-    );
-  }
-
-  const fill =
-    bg === "glow"
-      ? // The main page's brand-green stage glow, recreated behind the slab.
-        "bg-background bg-[radial-gradient(40%_44%_at_24%_26%,color-mix(in_oklch,var(--primary)_32%,transparent),transparent_70%),radial-gradient(44%_48%_at_76%_80%,color-mix(in_oklch,var(--primary)_20%,transparent),transparent_72%)]"
-      : bg === "grid"
-        ? // High-contrast checker — the clearest read on what shows through.
-          "bg-background [background-image:conic-gradient(color-mix(in_oklch,var(--foreground)_18%,transparent)_0_25%,transparent_0_50%,color-mix(in_oklch,var(--foreground)_18%,transparent)_0_75%,transparent_0)] [background-size:30px_30px]"
-        : // "none": the default neutral spotlight (no brand light through clear polymer).
-          "bg-background bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]";
+  if (bg.startsWith("data:")) return null;
 
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 -z-10", fill)}
+      className="pointer-events-none absolute inset-0 -z-10 bg-background bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]"
     />
   );
 }
