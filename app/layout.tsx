@@ -12,7 +12,7 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-// Departure Mono is the identity face — pixel/retro, used only where it carries
+// Departure Mono is the identity face: pixel/retro, used only where it carries
 // the brand (wordmark, section headers, the on-slab label). Kept off small,
 // dense panel text where a bitmap face turns rough.
 const departureMono = localFont({
@@ -23,9 +23,9 @@ const departureMono = localFont({
 });
 
 const SITE_URL = "https://slabbedit.vercel.app";
-const TITLE = "SlabbedIt — Preview your card in a PSA slab";
+const TITLE = "SlabbedIt: Preview your card in a PSA slab";
 const DESCRIPTION =
-  "Drop in a trading card, pick a grade and label, and get a photorealistic graded-slab render you can admire and share — before you pay to submit it.";
+  "Drop in a trading card, pick a grade and label, and get a photorealistic graded-slab render you can admire and share before you pay to submit it.";
 
 // metadataBase makes the file-based opengraph-image.png / twitter-image.png
 // (in app/) resolve to absolute URLs, which crawlers require.

@@ -1,7 +1,7 @@
 # Design
 
-Minimal Pokémon. The iconic trio (cobalt blue, electric yellow, Poké Ball red)
-mapped to semantic roles on calm, navy-tinted neutral surfaces. Restraint over
+Warm, premium, restrained. A single fresh leaf-green brand color mapped to the
+authority/action roles on calm warm-paper neutral surfaces. Restraint over
 spectacle: the rendered slab is the only thing allowed to shout.
 
 ## Source of truth
@@ -15,35 +15,35 @@ app must resolve to one of the existing shadcn token variables defined there.
   (`bg-background`, `text-accent`, `border-border`, ...).
 - Decorative tints (backdrop glows, grid, vignette) are mixed from tokens with
   `color-mix(in oklch, var(--token) N%, transparent)` so they track the theme.
-- **Exception — the slab is representational, not chrome.** `psa-slab.tsx` and
-  `slab-bumper.tsx` reproduce a real graded case (acrylic, holo, the PSA red
-  label `#cf1f2e`, physical bumper plastics). Those colors are material truth,
-  not theme, and are intentionally left as literal values.
+- **Exception: the slab is representational, not chrome.** `psa-slab.tsx` and
+  `slab-bumper.tsx` reproduce a real graded case (clear medical-grade polymer,
+  holo, the bright PSA label red `#eb1d2f` / `rgb(235 29 47)`, physical bumper
+  plastics). Those colors are material truth, not theme, and are intentionally
+  left as literal values. The large polymer planes are kept nearly transparent
+  so the case reads as clear; its hard edges, rails, and speculars define it.
 
 ## Color
 
 OKLCH throughout. Dark (`.dark`) is the hero "gallery stage" and the default
 mode (`<html class="dark">`); light (`:root`) is a clean-dashboard counterpart.
-Color strategy: **committed-minimal** — neutral surfaces, blue as the dominant
-brand/authority color, yellow as the single electric pop, red reserved for
-destruction.
+Color strategy: **committed-minimal**: warm-paper neutral surfaces, a single
+leaf green as the dominant brand/authority color, red reserved for destruction.
+There is no second accent hue: `accent` is a warm neutral hover/emphasis surface.
 
 Role mapping (same across modes; values differ per mode):
 
 | Token | Role | Hue family |
 |---|---|---|
-| `primary` | Primary actions, links, focus ring | Pokémon cobalt blue (~252) |
-| `accent` | The single pop: eyebrows, emphasis, hover | Pokémon yellow (~92) |
-| `destructive` | Destructive actions | Poké Ball red (~27) |
-| `background` / `card` / `muted` | Surfaces | Faint navy-tinted neutral (~245–252) |
-| `foreground` / `muted-foreground` | Text | Deep navy / mid slate-blue |
-| `chart-1..5` | Categorical data | blue, yellow, red, sky, green |
+| `primary` / `ring` | Primary actions, links, focus ring | Leaf green (~148) |
+| `accent` | Hover / emphasis surface | Warm neutral (~93, very low chroma) |
+| `destructive` | Destructive actions | Red in dark; warm near-black in light |
+| `background` / `card` / `muted` | Surfaces | Warm paper neutral (cream / stone) |
+| `foreground` / `muted-foreground` | Text | Warm near-black / warm mid-grey |
+| `chart-1..5` | Categorical data | green, purple, warm neutral |
 
-Contrast verified (WCAG): body and muted text clear 4.5:1 on both stages;
-`primary`/`destructive` button text and `accent` foreground clear 4.5:1.
-`accent` doubles as the shadcn hover/focus background, so hovers carry a yellow
-tint by design — if that ever reads as too loud, dial `accent` toward a softer
-butter-yellow rather than introducing a new token.
+Contrast (WCAG, craft default): body and muted text clear 4.5:1 on both stages,
+and `primary`/`destructive` button text clears 4.5:1. `accent` is a quiet
+neutral surface, so hovers read as a subtle warm tint rather than a color pop.
 
 ## Typography
 
@@ -62,9 +62,11 @@ small, dense panel text where it turns rough.
 
 ## Motion
 
-The slab's cursor-driven tilt and gloss, plus glitter, are core to the pitch.
-Provide a `prefers-reduced-motion` static fallback so the slab still renders
-fully without motion (craft default; no formal WCAG target for this PoC).
+The slab's cursor-driven tilt and gloss are core to the pitch. Foil tracking is
+available only when the card surface toggle is on, so matte uploads do not get a
+fake holo pass. A `prefers-reduced-motion` static fallback (handled in
+`lib/use-tilt.ts`) resets the slab to rest with no tilt and no gloss/foil
+tracking (craft default; no formal WCAG target for this PoC).
 
 ## Layout
 

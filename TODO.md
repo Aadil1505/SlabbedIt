@@ -1,13 +1,16 @@
-# Roadmap — to be implemented
+# Roadmap: to be implemented
 
 Tracked work that's intentionally deferred. Roughly priority-ordered.
 
 ## Before public launch
 
-- [ ] **`prefers-reduced-motion` fallback.** `PRODUCT.md` requires a static fallback
-      for the cursor tilt, gloss tracking, and glitter. Currently unmet — honor the
-      media query in `lib/use-tilt.ts` (skip pointer-driven transforms) and gate the
-      slab/bumper entrance animations.
+- [x] **`prefers-reduced-motion` fallback.** Done. `lib/use-tilt.ts` checks the
+      media query and returns no pointer handlers when reduced, so both the slab and
+      the bumper freeze at their rest state (no tilt, no gloss/foil tracking).
+- [ ] **True physical slab mode.** Add front/back view, optional card-back upload,
+      reverse label approximation, side thickness, and stackable rear geometry.
+      Keep reverse QR/barcode/security elements clearly illustrative and
+      non-functional.
 - [ ] **Analytics.** Add `@vercel/analytics` so we don't deploy blind.
 - [ ] **Dark PWA manifest colors.** `app/manifest.json` has white `theme_color` /
       `background_color`; the app is dark-default, so the installed-PWA splash flashes
@@ -21,9 +24,10 @@ Tracked work that's intentionally deferred. Roughly priority-ordered.
 
 ## Product scope
 
-- [ ] **Match `PRODUCT.md` or trim it.** Doc promises TCG **and sports** cards plus a
-      glitter material; the app is currently PSA + Pokémon only. Either build (sports
-      cards, other graders like BGS/CGC/SGC, glitter) or scope the doc to v1.
+- [ ] **Sports search, other graders, glitter.** Sports cards now work via upload +
+      the verbatim manual label (and `PRODUCT.md` reflects that). Still deferred: a
+      sports-card **search** source, other graders (BGS/CGC/SGC), and a glitter
+      material.
 
 ## Nice to have
 

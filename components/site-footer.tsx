@@ -73,7 +73,7 @@ export function SiteFooter() {
 
         <p className="mx-auto max-w-2xl text-center text-xs leading-5 text-muted-foreground">
           Not affiliated with, endorsed by, or sponsored by PSA. Slab images,
-          labels, grades, and certificate numbers are illustrative only — not
+          labels, grades, and certificate numbers are illustrative only, not
           authentication or official grading results. Card data &amp; images via
           TCGdex.
         </p>

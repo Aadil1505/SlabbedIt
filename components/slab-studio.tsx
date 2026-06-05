@@ -28,6 +28,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -35,6 +42,7 @@ import { cn } from "@/lib/utils";
 
 type Thickness = "slim" | "standard" | "chunky";
 type Finish = "matte" | "gloss";
+type CardFit = "contain" | "cover";
 type CopyFeedback = null | "Copied" | "Shared" | "Saved";
 type ExportNotice = null | {
   tone: "error" | "info";
@@ -60,29 +68,95 @@ const FINISH_OPTS: { value: Finish; label: string }[] = [
   { value: "gloss", label: "Gloss" },
 ];
 
-// PSA's grade scale and the abbreviated qualifier printed beside each number.
+const CARD_FIT_OPTS: { value: CardFit; label: string }[] = [
+  { value: "contain", label: "Fit full card" },
+  { value: "cover", label: "Fill tray" },
+];
+
+// Optional stage backgrounds, mainly a way to eyeball the clear slab's
+// see-through. Token-based so they track the theme and export cleanly; the
+// separate "Image" button uploads a custom photo (kept local as a data URL).
+const STAGE_BG_PRESETS: { value: string; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "glow", label: "Glow" },
+  { value: "grid", label: "Grid" },
+];
+
+// PSA's printed grade scale. Whole grades 1–10 plus half points; PSA issues
+// halves 1.5–8.5 only (there is no 9.5; 9 jumps straight to 10). The half
+// label is the lower whole grade's abbreviation + "+", except 1.5 = FR (Fair).
 const PSA_GRADES: { grade: string; gradeLabel: string }[] = [
   { grade: "10", gradeLabel: "GEM MT" },
   { grade: "9", gradeLabel: "MINT" },
-  { grade: "8", gradeLabel: "NM-MT" },
+  { grade: "8.5", gradeLabel: "NM - MT+" },
+  { grade: "8", gradeLabel: "NM - MT" },
+  { grade: "7.5", gradeLabel: "NM+" },
   { grade: "7", gradeLabel: "NM" },
-  { grade: "6", gradeLabel: "EX-MT" },
+  { grade: "6.5", gradeLabel: "EX - MT+" },
+  { grade: "6", gradeLabel: "EX - MT" },
+  { grade: "5.5", gradeLabel: "EX+" },
   { grade: "5", gradeLabel: "EX" },
-  { grade: "4", gradeLabel: "VG-EX" },
+  { grade: "4.5", gradeLabel: "VG - EX+" },
+  { grade: "4", gradeLabel: "VG - EX" },
+  { grade: "3.5", gradeLabel: "VG+" },
   { grade: "3", gradeLabel: "VG" },
+  { grade: "2.5", gradeLabel: "GOOD+" },
   { grade: "2", gradeLabel: "GOOD" },
+  { grade: "1.5", gradeLabel: "FR" },
   { grade: "1", gradeLabel: "PR" },
 ];
 
-// A believable 8-digit PSA-style cert number.
+const isHalfGrade = (grade: string) => grade.includes(".");
+
+// PSA grade qualifiers (whole grades only; a half grade already means the card
+// is high-end for its grade). Printed beside the number, e.g. "8 OC".
+const PSA_QUALIFIERS = ["OC", "ST", "PD", "OF", "MK", "MC"] as const;
+
+// A believable 9-digit PSA-style cert number (illustrative only).
 function makeCert() {
-  return String(Math.floor(10000000 + Math.random() * 90000000));
+  return String(Math.floor(100000000 + Math.random() * 900000000));
 }
+
+type LabelLines = Pick<LabelData, "line1" | "line2" | "line3">;
+
+const SAMPLE_LABEL_LINES: LabelLines = {
+  line1: "2021 POKEMON",
+  line2: "Charizard VMAX",
+  line3: "Shining Fates",
+};
+
+function pokemonLabelLines({
+  year,
+  name,
+  set,
+}: {
+  year: string;
+  name: string;
+  set: string;
+}): LabelLines {
+  return {
+    line1: [year, "POKEMON"].filter(Boolean).join(" "),
+    line2: name,
+    line3: set,
+  };
+}
+
+const SAMPLE_LABEL: LabelData = {
+  ...SAMPLE_LABEL_LINES,
+  number: "SV107",
+  grade: "10",
+  gradeLabel: "GEM MT",
+  qualifier: "",
+  cert: "539170428",
+  authentic: false,
+};
 
 export function SlabStudio() {
   const ids = useId();
 
   const [cardSrc, setCardSrc] = useState(SAMPLE_CARD_SRC);
+  const [cardFit, setCardFit] = useState<CardFit>("contain");
+  const [holoFoil, setHoloFoil] = useState(true);
 
   // Local upload: read the file straight to a data URL so the user's own card
   // image never leaves the browser and always exports cleanly (no CORS taint,
@@ -97,32 +171,53 @@ export function SlabStudio() {
       setUploadError(true);
       return;
     }
+    pickSeq.current += 1;
     setUploadError(false);
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === "string") setCardSrc(reader.result);
+      if (typeof reader.result === "string") {
+        setCardSrc(reader.result);
+        setCardFit("contain");
+        setHoloFoil(false);
+      }
     };
     reader.onerror = () => setUploadError(true);
     reader.readAsDataURL(file);
   }
 
-  // The printed grade label. Defaults describe the sample card so it reads
-  // right immediately. Grade is always user-set (the catalog has none) —
-  // default 10.
-  const [label, setLabel] = useState<LabelData>({
-    name: "Charizard VMAX",
-    set: "Shining Fates",
-    year: "2021",
-    number: "SV107",
-    grade: "10",
-    gradeLabel: "GEM MT",
-    cert: "53917042",
-  });
+  // Defaults describe the sample card so it reads right immediately. Grade is
+  // always user-set because the catalog does not provide a grade.
+  const [label, setLabel] = useState<LabelData>(SAMPLE_LABEL);
   // A new card pick is the only thing that overwrites the identity fields.
   const pickSeq = useRef(0);
+  const manualLineEditSeq = useRef(0);
 
   function setLabelField(key: keyof LabelData, value: string) {
+    if (key === "line1" || key === "line2" || key === "line3") {
+      manualLineEditSeq.current += 1;
+    }
     setLabel((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function setGrade(grade: string) {
+    const option = PSA_GRADES.find((g) => g.grade === grade);
+    if (!option) return;
+    setLabel((prev) => ({
+      ...prev,
+      grade,
+      gradeLabel: option.gradeLabel,
+      authentic: false,
+      qualifier: isHalfGrade(grade) ? "" : prev.qualifier,
+    }));
+  }
+
+  function resetToSampleCard() {
+    pickSeq.current += 1;
+    setUploadError(false);
+    setCardSrc(SAMPLE_CARD_SRC);
+    setCardFit("contain");
+    setHoloFoil(true);
+    setLabel(SAMPLE_LABEL);
   }
 
   // Event-driven auto-fill (not an effect, so manual edits aren't clobbered).
@@ -130,23 +225,29 @@ export function SlabStudio() {
   // fills in when it resolves, degrading to an editable blank if it fails.
   async function handleSelectCard(card: CardResumeModel) {
     setCardSrc(card.getImageURL("high", "png"));
+    setCardFit("contain");
+    setHoloFoil(true);
     const seq = ++pickSeq.current;
+    const lineEditSeqAtPick = manualLineEditSeq.current;
+    const lines0 = pokemonLabelLines({ year: "", name: card.name, set: "" });
     setLabel((prev) => ({
       ...prev,
-      name: card.name,
+      ...lines0,
       number: card.localId,
-      set: "",
-      year: "",
       cert: makeCert(),
     }));
     try {
       const full = await card.getCard();
       if (seq !== pickSeq.current) return;
+      const lines1 = pokemonLabelLines({
+        year: "",
+        name: full.name,
+        set: full.set?.name ?? "",
+      });
       setLabel((prev) => ({
         ...prev,
-        name: full.name,
+        ...(manualLineEditSeq.current === lineEditSeqAtPick ? lines1 : {}),
         number: full.localId,
-        set: full.set?.name ?? "",
       }));
       // The card's nested `set` is plain data (no `getSet`), so fetch the full
       // set by id to get its release year. Cached by the SDK.
@@ -154,20 +255,28 @@ export function SlabStudio() {
       if (setId) {
         const set = await tcgdex.set.get(setId);
         if (seq !== pickSeq.current) return;
+        const lines2 = pokemonLabelLines({
+          year: (set?.releaseDate ?? "").slice(0, 4),
+          name: full.name,
+          set: full.set?.name ?? "",
+        });
         setLabel((prev) => ({
           ...prev,
-          year: (set?.releaseDate ?? "").slice(0, 4),
+          ...(manualLineEditSeq.current === lineEditSeqAtPick ? lines2 : {}),
         }));
       }
     } catch {
-      // Leave set/year blank and editable.
+      // Leave lines as composed; year stays blank and editable.
     }
   }
 
-  const [showBumper, setShowBumper] = useState(true);
+  // A bumper is an accessory, not part of a PSA slab, so the bare slab is the
+  // default — it keeps the PSA silhouette as the hero and the primary flow short.
+  const [showBumper, setShowBumper] = useState(false);
   // `color` is either a preset name or a literal hex (custom). The bumper's
   // `color` prop already accepts any CSS color, so both flow straight through.
-  const [color, setColor] = useState<string>("red");
+  // Black is a neutral first suggestion (red used to dominate the preview).
+  const [color, setColor] = useState<string>("black");
   // The last custom color, kept even while a preset is active so the gear
   // swatch keeps previewing it and reopening the picker resumes from it.
   const [customColor, setCustomColor] = useState("#06b6d4");
@@ -176,6 +285,23 @@ export function SlabStudio() {
   const [finish, setFinish] = useState<Finish>("matte");
   const [translucent, setTranslucent] = useState(false);
   const [interactive, setInteractive] = useState(true);
+
+  // Optional background behind the slab, mainly to test the clear case's
+  // see-through: "none" | "glow" | "grid" | an uploaded image data URL. It
+  // lives inside the capture target, so whatever sits here also shows through
+  // the clear slab in the exported PNG. Uploads stay local (no CORS taint).
+  const [stageBg, setStageBg] = useState<string>("none");
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+  const bgIsImage = stageBg.startsWith("data:");
+
+  function handleBgFile(file: File | null | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setStageBg(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
 
   // On mobile the controls stack below the slab, so once someone scrolls down
   // to configure, a floating button offers a quick jump back up to the preview.
@@ -347,7 +473,13 @@ export function SlabStudio() {
     }
   }
   const slab = (
-    <PSASlab src={cardSrc} label={label} interactive={interactive} />
+    <PSASlab
+      src={cardSrc}
+      label={label}
+      interactive={interactive}
+      cardFit={cardFit}
+      holoFoil={holoFoil}
+    />
   );
 
   return (
@@ -362,10 +494,10 @@ export function SlabStudio() {
           data-export-stage
           className="relative isolate w-full max-w-[min(calc(82vw+64px),424px)] px-12 pt-12 pb-16 lg:max-w-[452px]"
         >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 bg-background bg-[radial-gradient(68%_66%_at_50%_48%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_72%),radial-gradient(44%_42%_at_62%_70%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent_78%)]"
-          />
+          {/* Stage backdrop behind the slab. Defaults to a neutral spotlight so
+              no brand light tints the clear polymer; can be switched to a glow,
+              a checker, or an uploaded image to test the case's see-through. */}
+          <StageBackdrop bg={stageBg} />
           {showBumper ? (
             <SlabBumper
               color={color}
@@ -380,6 +512,16 @@ export function SlabStudio() {
           ) : (
             slab
           )}
+
+          {/* Persistent provenance mark — lives INSIDE the capture target so
+              every exported PNG carries it (the footer disclaimer sits outside
+              the export). Subtle, but deliberately not removable from the view. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-4 z-20 text-center font-heading text-[11px] uppercase tracking-[0.18em] text-muted-foreground/55"
+          >
+            SlabbedIt Preview · Illustrative only
+          </span>
         </div>
       </section>
 
@@ -438,77 +580,138 @@ export function SlabStudio() {
               )}
               <button
                 type="button"
-                onClick={() => {
-                  setUploadError(false);
-                  setCardSrc(SAMPLE_CARD_SRC);
-                }}
+                onClick={resetToSampleCard}
                 className="self-start text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
               >
                 Reset to sample card
               </button>
+            </Row>
+            <Row>
+              <Label>Card fit</Label>
+              <Segmented
+                options={CARD_FIT_OPTS}
+                value={cardFit}
+                onChange={setCardFit}
+              />
+              <span className="text-xs text-muted-foreground">
+                Use Fit for scans. Fill tray crops edge background from phone
+                photos.
+              </span>
             </Row>
           </Section>
 
           <Section title="Label">
             <div className="flex flex-col gap-6">
               <Row>
-                <Label>Grade</Label>
-                <div className="grid grid-cols-5 gap-2">
-                  {PSA_GRADES.map(({ grade, gradeLabel }) => {
-                    const active = label.grade === grade;
+                <Label htmlFor={`${ids}-grade`}>Grade</Label>
+                <Select
+                  value={label.grade}
+                  disabled={label.authentic}
+                  onValueChange={setGrade}
+                >
+                  <SelectTrigger id={`${ids}-grade`} className="w-full">
+                    <SelectValue placeholder="Select a grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PSA_GRADES.map(({ grade, gradeLabel }) => (
+                      <SelectItem key={grade} value={grade}>
+                        {grade} · {gradeLabel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">
+                  {label.authentic
+                    ? "Authentic, no numeric grade"
+                    : label.gradeLabel}
+                </span>
+              </Row>
+
+              <SwitchRow
+                id={`${ids}-auth`}
+                label="Authentic (no grade)"
+                checked={label.authentic}
+                onChange={(v) =>
+                  setLabel((prev) => ({
+                    ...prev,
+                    authentic: v,
+                    gradeLabel: v
+                      ? "AUTHENTIC"
+                      : (PSA_GRADES.find((g) => g.grade === prev.grade)
+                          ?.gradeLabel ?? prev.gradeLabel),
+                    qualifier: v ? "" : prev.qualifier,
+                  }))
+                }
+              />
+
+              <Row>
+                <Label>Qualifier</Label>
+                <fieldset
+                  disabled={label.authentic || isHalfGrade(label.grade)}
+                  className="grid grid-cols-4 gap-2 transition-opacity disabled:opacity-40"
+                >
+                  {["", ...PSA_QUALIFIERS].map((q) => {
+                    const active = label.qualifier === q;
                     return (
                       <button
-                        key={grade}
+                        key={q || "none"}
                         type="button"
-                        onClick={() =>
-                          setLabel((prev) => ({ ...prev, grade, gradeLabel }))
-                        }
+                        onClick={() => setLabelField("qualifier", q)}
                         aria-pressed={active}
                         className={cn(
-                          "rounded-md border py-1.5 font-heading text-sm transition-colors",
+                          "rounded-md border py-1.5 font-heading text-xs transition-colors",
                           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                           active
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border text-foreground hover:bg-accent/40",
                         )}
                       >
-                        {grade}
+                        {q || "None"}
                       </button>
                     );
                   })}
-                </div>
+                </fieldset>
                 <span className="text-xs text-muted-foreground">
-                  {label.gradeLabel}
+                  Whole grades only; printed beside the number.
                 </span>
               </Row>
 
+              <SwitchRow
+                id={`${ids}-foil`}
+                label="Holo or foil surface"
+                checked={holoFoil}
+                onChange={setHoloFoil}
+              />
+
               <Row>
-                <Label htmlFor={`${ids}-lname`}>Card name</Label>
+                <Label htmlFor={`${ids}-l1`}>Line 1</Label>
                 <Input
-                  id={`${ids}-lname`}
-                  value={label.name}
-                  onChange={(e) => setLabelField("name", e.target.value)}
+                  id={`${ids}-l1`}
+                  value={label.line1}
+                  onChange={(e) => setLabelField("line1", e.target.value)}
+                  placeholder="2026 POKEMON ASC EN"
                 />
               </Row>
               <Row>
-                <Label htmlFor={`${ids}-lset`}>Set</Label>
+                <Label htmlFor={`${ids}-l2`}>Line 2</Label>
                 <Input
-                  id={`${ids}-lset`}
-                  value={label.set}
-                  onChange={(e) => setLabelField("set", e.target.value)}
-                  placeholder="—"
+                  id={`${ids}-l2`}
+                  value={label.line2}
+                  onChange={(e) => setLabelField("line2", e.target.value)}
+                  placeholder="Pikachu ex"
                 />
               </Row>
+              <Row>
+                <Label htmlFor={`${ids}-l3`}>Line 3</Label>
+                <Input
+                  id={`${ids}-l3`}
+                  value={label.line3}
+                  onChange={(e) => setLabelField("line3", e.target.value)}
+                  placeholder="Special Illustration Rare"
+                />
+              </Row>
+
               <div className="grid grid-cols-2 gap-3">
-                <Row>
-                  <Label htmlFor={`${ids}-lyear`}>Year</Label>
-                  <Input
-                    id={`${ids}-lyear`}
-                    value={label.year}
-                    onChange={(e) => setLabelField("year", e.target.value)}
-                    placeholder="—"
-                  />
-                </Row>
                 <Row>
                   <Label htmlFor={`${ids}-lnum`}>Number</Label>
                   <Input
@@ -517,30 +720,30 @@ export function SlabStudio() {
                     onChange={(e) => setLabelField("number", e.target.value)}
                   />
                 </Row>
+                <Row>
+                  <Label htmlFor={`${ids}-lcert`}>Cert</Label>
+                  <Input
+                    id={`${ids}-lcert`}
+                    value={label.cert}
+                    onChange={(e) => setLabelField("cert", e.target.value)}
+                  />
+                </Row>
               </div>
-              <Row>
-                <Label htmlFor={`${ids}-lcert`}>Cert</Label>
-                <Input
-                  id={`${ids}-lcert`}
-                  value={label.cert}
-                  onChange={(e) => setLabelField("cert", e.target.value)}
-                />
-              </Row>
             </div>
           </Section>
 
-          <Section title="Bumper">
+          <Section title="Accessories">
             <SwitchRow
               id={`${ids}-show`}
-              label="Show bumper"
+              label="Protective bumper"
               checked={showBumper}
               onChange={setShowBumper}
             />
 
-            <fieldset
-              disabled={!showBumper}
-              className="flex flex-col gap-6 transition-opacity disabled:opacity-40"
-            >
+            {/* Controls only appear when the bumper is enabled, so the section
+                stays collapsed by default and the primary flow is short. */}
+            {showBumper && (
+              <fieldset className="flex flex-col gap-6">
               <Row>
                 <Label>Color</Label>
                 <div className="grid grid-cols-6 gap-2">
@@ -661,7 +864,8 @@ export function SlabStudio() {
                 checked={translucent}
                 onChange={setTranslucent}
               />
-            </fieldset>
+              </fieldset>
+            )}
           </Section>
 
           <Section title="Stage">
@@ -671,6 +875,61 @@ export function SlabStudio() {
               checked={interactive}
               onChange={setInteractive}
             />
+
+            <Row>
+              <Label>Background</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {STAGE_BG_PRESETS.map(({ value, label }) => {
+                  const active = stageBg === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setStageBg(value)}
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-md border py-1.5 font-heading text-xs transition-colors",
+                        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-foreground hover:bg-accent/40",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => bgFileInputRef.current?.click()}
+                  aria-pressed={bgIsImage}
+                  className={cn(
+                    "rounded-md border py-1.5 font-heading text-xs transition-colors",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    bgIsImage
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-foreground hover:bg-accent/40",
+                  )}
+                >
+                  Image…
+                </button>
+              </div>
+              <input
+                ref={bgFileInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  handleBgFile(e.target.files?.[0]);
+                  // Reset so re-picking the same file fires onChange again.
+                  e.target.value = "";
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Puts an image behind the slab to test the clear case’s
+                see-through. Included in the export.
+              </span>
+            </Row>
           </Section>
 
           <Section title="Export">
@@ -761,6 +1020,36 @@ function Section({
 
 function Row({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-2">{children}</div>;
+}
+
+// The stage backdrop, sitting behind the slab inside the capture target.
+function StageBackdrop({ bg }: { bg: string }) {
+  if (bg.startsWith("data:")) {
+    return (
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-background bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url("${bg}")` }}
+      />
+    );
+  }
+
+  const fill =
+    bg === "glow"
+      ? // The main page's brand-green stage glow, recreated behind the slab.
+        "bg-background bg-[radial-gradient(40%_44%_at_24%_26%,color-mix(in_oklch,var(--primary)_32%,transparent),transparent_70%),radial-gradient(44%_48%_at_76%_80%,color-mix(in_oklch,var(--primary)_20%,transparent),transparent_72%)]"
+      : bg === "grid"
+        ? // High-contrast checker — the clearest read on what shows through.
+          "bg-background [background-image:conic-gradient(color-mix(in_oklch,var(--foreground)_18%,transparent)_0_25%,transparent_0_50%,color-mix(in_oklch,var(--foreground)_18%,transparent)_0_75%,transparent_0)] [background-size:30px_30px]"
+        : // "none": the default neutral spotlight (no brand light through clear polymer).
+          "bg-background bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]";
+
+  return (
+    <div
+      aria-hidden
+      className={cn("pointer-events-none absolute inset-0 -z-10", fill)}
+    />
+  );
 }
 
 function SwitchRow({

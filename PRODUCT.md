@@ -17,9 +17,14 @@ collectors. They are hobbyists, not professionals: comfortable with card lingo
 
 SlabbedIt is a previewer: drop in a card image, choose a grade and label
 details, and get a photorealistic graded-slab render you can admire and share.
-The technical bet is that the entire slab (acrylic case, bevel, gloss, floor
-shadow, protective bumpers, glitter, printed label) is built in pure CSS/DOM,
-no canvas or 3D, so it stays sharp at any size and renders instantly.
+Card search covers Pokémon/TCG (via TCGdex); sports and any other card are
+supported by uploading the image and typing the three verbatim label lines.
+Search initializes the label fields for convenience, but the visible fields are
+the source of truth after that, so manual edits are never overwritten by a
+secondary helper.
+The technical bet is that the entire slab (clear medical-grade polymer case,
+bevel, gloss, floor shadow, protective bumpers, printed label) is built in pure
+CSS/DOM, no canvas or 3D, so it stays sharp at any size and renders instantly.
 
 Success right now is a working previewer flow: a user supplies their own card
 (and label data), the slab updates to match, and the result is convincing enough
@@ -49,7 +54,7 @@ it. Three words: premium, authoritative, collectible.
 
 - **The slab is the product.** Every layout decision serves making the rendered
   slab the unmistakable hero. Chrome recedes; the case gets the light.
-- **Realism is the pitch.** Material truth (acrylic depth, directional light,
+- **Realism is the pitch.** Material truth (clear-polymer depth, directional light,
   honest shadows, label print) is non-negotiable. If an effect makes it look
   more like a real graded case, it earns its place; if it looks like a filter,
   it goes.
@@ -64,5 +69,6 @@ it. Three words: premium, authoritative, collectible.
 
 No formal WCAG target for this proof-of-concept. As a craft default, keep body
 and label text legible against the dark stage, and provide a static fallback
-under `prefers-reduced-motion` for the cursor tilt, gloss tracking, and glitter
-so the slab still renders fully without motion.
+under `prefers-reduced-motion` for the cursor tilt, gloss, and light-tracking
+foil so the slab still renders fully without motion. Uploaded non-holo cards
+default with foil sheen off; collectors can enable it for holo or foil surfaces.
