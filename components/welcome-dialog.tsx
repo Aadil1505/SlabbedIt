@@ -73,15 +73,15 @@ export function WelcomeDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl tracking-tight">
             Welcome to SlabbedIt
           </DialogTitle>
           <DialogDescription>
             Preview your raw card sealed in a graded slab before you ever
-            submit it. Everything renders live in your browser; nothing is
-            uploaded anywhere.
+            submit it. The slab renders live in your browser, and your card
+            image never leaves it.
           </DialogDescription>
         </DialogHeader>
 
