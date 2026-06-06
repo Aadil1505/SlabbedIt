@@ -498,7 +498,7 @@ export function SlabStudio() {
         {!bgIsImage && (
           <div
             aria-hidden
-            className="absolute inset-0 [mask-image:radial-gradient(52%_72%_at_50%_50%,white_30%,transparent_100%)]"
+            className="absolute inset-0 [mask-image:radial-gradient(52%_50%_at_50%_50%,white_28%,transparent_100%)]"
           >
             {/* The SVG renders at its natural size (squares × cell) and is
                 centered; the mask lives on this section-sized wrapper so the
