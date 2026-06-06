@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { ImageUp, BadgeCheck, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -75,7 +76,14 @@ export function WelcomeDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl tracking-tight">
+          <DialogTitle className="flex items-center gap-2.5 text-xl tracking-tight">
+            <Image
+              src="/web-app-manifest-192x192.png"
+              alt=""
+              width={32}
+              height={32}
+              className="size-8 shrink-0 [image-rendering:pixelated]"
+            />
             Welcome to SlabbedIt
           </DialogTitle>
           <DialogDescription>
