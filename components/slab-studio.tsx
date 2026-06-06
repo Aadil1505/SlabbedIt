@@ -495,7 +495,7 @@ export function SlabStudio() {
             width={40}
             height={40}
             squares={[60, 36]}
-            className="inset-auto top-1/2 left-1/2 h-auto w-auto -translate-x-1/2 -translate-y-1/2 [mask-image:radial-gradient(70%_70%_at_50%_50%,white,transparent_82%)]"
+            className="inset-auto top-1/2 left-1/2 h-auto w-auto -translate-x-1/2 -translate-y-1/2 [mask-image:radial-gradient(58%_68%_at_50%_50%,white_36%,transparent_100%)]"
             squaresClassName="stroke-foreground/[0.07]"
           />
         )}
@@ -1038,7 +1038,7 @@ function StageBackdrop({ bg }: { bg: string }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 bg-background bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]"
+      className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]"
     />
   );
 }
