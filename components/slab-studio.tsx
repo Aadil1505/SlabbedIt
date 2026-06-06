@@ -484,7 +484,8 @@ export function SlabStudio() {
     <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Stage — the gallery floor. An uploaded image fills the whole stage as
           a scene backdrop (the slab box stays transparent so it shows through);
-          "none" falls back to the neutral spotlight behind the slab only. */}
+          "none" shows the ambient grid plus the neutral spotlight behind the
+          slab. */}
       <section
         className={cn(
           "relative flex min-h-[60vh] flex-1 items-center justify-center overflow-hidden bg-background px-6 py-12 lg:min-h-0 lg:py-16",
