@@ -287,6 +287,11 @@ export function SlabStudio() {
   const bgFileInputRef = useRef<HTMLInputElement>(null);
   const bgIsImage = stageBg.startsWith("data:");
 
+  // Optional opaque fill behind the slab box. Off by default so the ambient
+  // stage grid shows through the clear polymer; on, it restores the solid
+  // panel that isolates the slab from whatever is behind it.
+  const [solidBackdrop, setSolidBackdrop] = useState(false);
+
   function handleBgFile(file: File | null | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
@@ -491,13 +496,21 @@ export function SlabStudio() {
             it sits outside the capture target so exports stay clean. Hidden
             when an uploaded image fills the stage. */}
         {!bgIsImage && (
-          <InteractiveGridPattern
-            width={40}
-            height={40}
-            squares={[60, 36]}
-            className="inset-auto top-1/2 left-1/2 h-auto w-auto -translate-x-1/2 -translate-y-1/2 [mask-image:radial-gradient(58%_68%_at_50%_50%,white_36%,transparent_100%)]"
-            squaresClassName="stroke-foreground/[0.07]"
-          />
+          <div
+            aria-hidden
+            className="absolute inset-0 [mask-image:radial-gradient(52%_72%_at_50%_50%,white_30%,transparent_100%)]"
+          >
+            {/* The SVG renders at its natural size (squares × cell) and is
+                centered; the mask lives on this section-sized wrapper so the
+                fade tracks the visible stage, not the oversized SVG box. */}
+            <InteractiveGridPattern
+              width={40}
+              height={40}
+              squares={[60, 36]}
+              className="inset-auto top-1/2 left-1/2 h-auto w-auto -translate-x-1/2 -translate-y-1/2"
+              squaresClassName="stroke-foreground/[0.07]"
+            />
+          </div>
         )}
         {/* Capture target. Padding gives the negative-offset floor shadow room
             so it isn't clipped out of the export. */}
@@ -509,7 +522,7 @@ export function SlabStudio() {
           {/* Stage backdrop behind the slab — a neutral spotlight so no brand
               light tints the clear polymer. When an image is uploaded it fills
               the whole stage instead (see the section above) and this is null. */}
-          <StageBackdrop bg={stageBg} />
+          <StageBackdrop bg={stageBg} solid={solidBackdrop} />
           {showBumper ? (
             <SlabBumper
               color={color}
@@ -888,6 +901,13 @@ export function SlabStudio() {
               onChange={setInteractive}
             />
 
+            <SwitchRow
+              id={`${ids}-solid-backdrop`}
+              label="Solid backdrop"
+              checked={solidBackdrop}
+              onChange={setSolidBackdrop}
+            />
+
             <Row>
               <Label>Background</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -1032,13 +1052,16 @@ function Row({ children }: { children: React.ReactNode }) {
 // image fills the whole stage at the section level instead, so the box stays
 // transparent and the scene shows through the clear slab — only "none" paints
 // here, as a neutral spotlight that travels into the export.
-function StageBackdrop({ bg }: { bg: string }) {
+function StageBackdrop({ bg, solid }: { bg: string; solid: boolean }) {
   if (bg.startsWith("data:")) return null;
 
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]"
+      className={cn(
+        "pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(62%_60%_at_50%_46%,color-mix(in_oklch,var(--foreground)_7%,transparent),transparent_72%)]",
+        solid && "bg-background",
+      )}
     />
   );
 }
