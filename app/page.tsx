@@ -1,4 +1,5 @@
 import { SlabStudio } from "@/components/slab-studio";
+import { WelcomeDialog } from "@/components/welcome-dialog";
 
 export default function Home() {
   return (
@@ -32,6 +33,7 @@ export default function Home() {
       />
 
       <SlabStudio />
+      <WelcomeDialog />
     </main>
   );
 }
