@@ -22,6 +22,7 @@ import {
   type BumperColorName,
 } from "@/components/slab-bumper";
 import { Input } from "@/components/ui/input";
+import { InteractiveGridPattern } from "@/components/ui/interactive-grid-pattern";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -481,11 +482,23 @@ export function SlabStudio() {
           "none" falls back to the neutral spotlight behind the slab only. */}
       <section
         className={cn(
-          "flex min-h-[60vh] flex-1 items-center justify-center bg-background px-6 py-12 lg:min-h-0 lg:overflow-hidden lg:py-16",
+          "relative flex min-h-[60vh] flex-1 items-center justify-center overflow-hidden bg-background px-6 py-12 lg:min-h-0 lg:py-16",
           bgIsImage && "bg-cover bg-center bg-no-repeat",
         )}
         style={bgIsImage ? { backgroundImage: `url("${stageBg}")` } : undefined}
       >
+        {/* Ambient grid across the whole stage floor. Viewing backdrop only —
+            it sits outside the capture target so exports stay clean. Hidden
+            when an uploaded image fills the stage. */}
+        {!bgIsImage && (
+          <InteractiveGridPattern
+            width={40}
+            height={40}
+            squares={[60, 36]}
+            className="inset-auto top-1/2 left-1/2 h-auto w-auto -translate-x-1/2 -translate-y-1/2 [mask-image:radial-gradient(70%_70%_at_50%_50%,white,transparent_82%)]"
+            squaresClassName="stroke-foreground/[0.07]"
+          />
+        )}
         {/* Capture target. Padding gives the negative-offset floor shadow room
             so it isn't clipped out of the export. */}
         <div
